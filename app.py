@@ -82,77 +82,52 @@ def assign_individuals(times_sorted, separator_min):
     return individus
 
 
-def hartigan_dip(gaps):
+# Plafond biologique pour le test de Hartigan :
+# Au-delà de 4 × séparateur, tous les gaps signifient "individu différent".
+# Les inclure trop longs dilue le 2e mode en une queue plate et empêche le
+# Dip test de détecter deux pics concentrés même quand la bimodalité est réelle.
+_HARTIGAN_CAP_DEFAULT = 90  # minutes
+
+
+def hartigan_dip(gaps, sep_min=20):
     """
     Teste la bimodalité via Hartigan's Dip.
     Retourne (D, p, warning_msg).
 
-    Pré-requis pour un test fiable :
-    - Au moins 30 intervalles (effectif minimum)
-    - Au moins 5 % d'intervalles > 10 min (mode long présent)
-    Sans ces conditions, D≈0 / p≈1 est un artefact numérique, pas un résultat.
+    Les gaps sont plafonnés à max(4×sep_min, 90 min) avant le test.
+    Justification : les très longs gaps (>2h) forment une queue plate qui dilue
+    le 2e mode et fait échouer le test même quand la bimodalité est visuellement
+    évidente. Biologiquement, tout gap > 4×séparateur signifie "individu distinct"
+    — leur valeur exacte n'apporte aucune information supplémentaire au test.
     """
     if not HAS_DIPTEST:
         return None, None, "Package diptest non installé (`pip install diptest`)."
+    cap = max(4 * sep_min, _HARTIGAN_CAP_DEFAULT)
     arr = np.asarray(gaps, dtype=float)
+    arr = arr[arr <= cap]
     n = len(arr)
     if n < 30:
         return None, None, (
-            f"Effectif insuffisant ({n} intervalles disponibles, minimum 30 requis). "
+            f"Effectif insuffisant ({n} intervalles ≤ {cap} min, minimum 30 requis). "
             "Augmentez le nombre de nuits analysées ou vérifiez le filtre espèce/période."
         )
-    pct_long = float(np.mean(arr > 10) * 100)
+    pct_long = float(np.mean(arr > sep_min) * 100)
     if pct_long < 5:
         return None, None, (
-            f"Mode long absent : seulement {pct_long:.1f} % des intervalles dépassent 10 min. "
-            "La distribution est quasi-unimodale (pic unique de courts intervalles intra-individus). "
-            "Cela signifie que les nuits analysées contiennent rarement plusieurs individus distincts "
-            "séparés de >10 min — le test ne peut pas distinguer les deux modes. "
+            f"Mode long absent : seulement {pct_long:.1f} % des intervalles "
+            f"dépassent {sep_min} min (seuil : 5 %). "
+            "La distribution est quasi-unimodale. "
             "Vérifiez que la période inclut des nuits à forte activité migratoire."
         )
     d, p = _diptest.diptest(arr)
     return float(d), float(p), None
 
 
-def build_summary(df, separator_min):
-    """Calcule le nombre d'individus estimés par nuit × espèce."""
-    rows = []
-    for (night, sp), grp in df.groupby(["nuit_acoustique", "espece"], sort=True):
-        times = sorted(grp["datetime"])
-        individus = assign_individuals(times, separator_min)
-        n_ind = int(individus.max()) if len(individus) else 0
-        rows.append({
-            "Nuit acoustique": night,
-            "Espèce": sp,
-            "Contacts": len(grp),
-            "Individus estimés": n_ind,
-        })
-    return pd.DataFrame(rows)
-
-
-def build_gap_df(df, separator_min):
-    """Calcule tous les intervalles intra-nuit avec métadonnées (espèce, nuit, statut)."""
-    rows = []
-    for (night, sp), grp in df.groupby(["nuit_acoustique", "espece"], sort=True):
-        times = sorted(grp["datetime"])
-        for i in range(1, len(times)):
-            delta = (times[i] - times[i - 1]).total_seconds() / 60
-            rows.append({
-                "nuit_acoustique": night,
-                "espece": sp,
-                "intervalle_min": delta,
-                "nouveau_individu": delta > separator_min,
-                "t_debut": times[i - 1],
-                "t_fin": times[i],
-            })
-    return pd.DataFrame(rows)
-
-
 def get_gaps_for_species(gap_df, sp, max_gap_min=480):
     """
     Extrait les intervalles intra-nuit pour une espèce depuis gap_df.
-    Utilise gap_df comme unique source de vérité (pas de duplication de logique).
-    Filtre les valeurs aberrantes > max_gap_min (artefacts).
+    max_gap_min=480 filtre les artefacts > 8h (pour l'histogramme).
+    Le plafonnement pour le Dip test est géré dans hartigan_dip().
     """
     if gap_df.empty or sp not in gap_df["espece"].values:
         return np.array([])
@@ -507,7 +482,7 @@ with tab2:
                     delta_color="normal" if pct_long >= 5 else "inverse")
 
     # ── Test de Hartigan ──
-    dip_stat, dip_pval, dip_warn = hartigan_dip(gaps_sp_hartigan)
+    dip_stat, dip_pval, dip_warn = hartigan_dip(gaps_sp_hartigan, sep_min=sep_min)
 
     if dip_warn:
         st.warning(f"⚠️ **Test non applicable** : {dip_warn}")
@@ -582,7 +557,7 @@ with tab2:
         dip_rows = []
         for sp in all_species:
             g = get_gaps_for_species(gap_df, sp)
-            d, p, w = hartigan_dip(g)
+            d, p, w = hartigan_dip(g, sep_min=sep_min)
             n_sp   = len(g)
             nl_sp  = int(np.sum(g > sep_min)) if n_sp else 0
             pct_sp = (nl_sp / n_sp * 100) if n_sp else 0
@@ -908,7 +883,7 @@ with tab5:
         dip_rows = []
         for sp in all_species:
             g = get_gaps_for_species(gap_df, sp)
-            d, p, w = hartigan_dip(g)
+            d, p, w = hartigan_dip(g, sep_min=sep_min)
             n_sp  = len(g)
             nl_sp = int(np.sum(g > sep_min)) if n_sp else 0
             dip_rows.append({
