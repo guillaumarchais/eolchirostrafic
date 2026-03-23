@@ -148,25 +148,16 @@ def build_gap_df(df, separator_min):
     return pd.DataFrame(rows)
 
 
-def build_gaps_for_hartigan(df):
+def get_gaps_for_species(gap_df, sp, max_gap_min=480):
     """
-    Calcule les intervalles INTRA-NUIT pour le test de Hartigan, par espèce.
-    Pools tous les gaps de toutes les nuits pour une même espèce.
-    Exclut les gaps inter-nuits (qui ne représentent pas un comportement réel).
-    Retourne un dict {espece: array_of_gaps_minutes}.
+    Extrait les intervalles intra-nuit pour une espèce depuis gap_df.
+    Utilise gap_df comme unique source de vérité (pas de duplication de logique).
+    Filtre les valeurs aberrantes > max_gap_min (artefacts).
     """
-    result = {}
-    for sp, sp_grp in df.groupby("espece"):
-        all_gaps = []
-        for night, night_grp in sp_grp.groupby("nuit_acoustique"):
-            times = sorted(night_grp["datetime"])
-            for i in range(1, len(times)):
-                delta = (times[i] - times[i - 1]).total_seconds() / 60
-                # Exclure les gaps aberrants (>480 min = 8h, artefact de données)
-                if delta <= 480:
-                    all_gaps.append(delta)
-        result[sp] = np.array(all_gaps)
-    return result
+    if gap_df.empty or sp not in gap_df["espece"].values:
+        return np.array([])
+    arr = gap_df[gap_df["espece"] == sp]["intervalle_min"].values.astype(float)
+    return arr[arr <= max_gap_min]
 
 
 def parse_file(uploaded):
@@ -345,7 +336,7 @@ species_color = {sp: SPECIES_COLORS[i % len(SPECIES_COLORS)]
 # ─────────────────────────────────────────────────────────────────────────────
 summary_df = build_summary(df_work, sep_min)
 gap_df = build_gap_df(df_work, sep_min)
-gaps_hartigan = build_gaps_for_hartigan(df_work)  # dict {espece: array} pour le test de Hartigan
+# gaps calculés via get_gaps_for_species(gap_df, sp) — source unique : gap_df
 
 n_nights = df_work["nuit_acoustique"].nunique()
 total_contacts = len(df_work)
@@ -465,7 +456,7 @@ with tab2:
         )
 
     # Intervalles intra-nuit poolés pour cette espèce (source pour Hartigan)
-    gaps_sp_hartigan = gaps_hartigan.get(sp_selected, np.array([]))
+    gaps_sp_hartigan = get_gaps_for_species(gap_df, sp_selected)
     # Intervalles avec métadonnées (pour l'histogramme et le tableau)
     if gap_df.empty or sp_selected not in gap_df["espece"].values:
         gaps_sp = np.array([])
@@ -565,7 +556,7 @@ with tab2:
     else:
         dip_rows = []
         for sp in all_species:
-            g = gaps_hartigan.get(sp, np.array([]))
+            g = get_gaps_for_species(gap_df, sp)
             d, p, w = hartigan_dip(g)
             n_sp   = len(g)
             nl_sp  = int(np.sum(g > sep_min)) if n_sp else 0
@@ -891,7 +882,7 @@ with tab5:
         st.markdown("**3 · Résultats test de Hartigan's Dip**")
         dip_rows = []
         for sp in all_species:
-            g = gaps_hartigan.get(sp, np.array([]))
+            g = get_gaps_for_species(gap_df, sp)
             d, p, w = hartigan_dip(g)
             n_sp  = len(g)
             nl_sp = int(np.sum(g > sep_min)) if n_sp else 0
