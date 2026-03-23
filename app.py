@@ -1,5 +1,5 @@
 """
-Séparateur d'individus — Acoustique chiroptères
+Eol chiros trafic : convertisseur d'activité en estimations d'individus
 ================================================
 Application Streamlit pour estimer le nombre d'individus à partir de
 données acoustiques de suivi de chauves-souris (méthode du séparateur,
@@ -231,10 +231,26 @@ Les colonnes Date et Heure peuvent être fusionnées ou séparées.
     st.subheader("2 · Mapping des colonnes")
     cols = list(raw_df.columns)
 
+    # Détection automatique : si une colonne contient "heure" ou "time" ET
+    # une autre contient "date", on a probablement deux colonnes séparées.
+    _has_time_col = any(any(k in c.lower() for k in ["heure", "time"]) for c in cols)
+    _has_date_col = any("date" in c.lower() for c in cols)
+    _has_datetime_col = any(
+        any(k in c.lower() for k in ["datetime", "date_heure", "dateheure", "timestamp"])
+        for c in cols
+    )
+    _auto_mode = (
+        "Deux colonnes séparées"
+        if (_has_time_col and _has_date_col and not _has_datetime_col)
+        else "Colonne unique (date + heure)"
+    )
+
     dt_mode = st.radio(
         "Format date/heure",
         ["Colonne unique (date + heure)", "Deux colonnes séparées"],
+        index=["Colonne unique (date + heure)", "Deux colonnes séparées"].index(_auto_mode),
         horizontal=True,
+        help="Détection automatique — modifiez si nécessaire.",
     )
 
     if dt_mode == "Colonne unique (date + heure)":
@@ -243,6 +259,15 @@ Les colonnes Date et Heure peuvent être fusionnées ou séparées.
                                                 if any(k in c.lower() for k in
                                                        ["datetime", "date", "time", "heure"])), 0))
         col_date_sep = col_time_sep = None
+        # Vérification : la colonne doit contenir une heure réelle
+        _test_dt = pd.to_datetime(raw_df[col_datetime].dropna().iloc[:10],
+                                  dayfirst=True, errors="coerce")
+        if (_test_dt.dt.hour == 0).all():
+            st.warning(
+                f"⚠️ La colonne **{col_datetime}** ne semble contenir que des dates sans heure. "
+                "Si vos données ont une colonne heure séparée, passez en mode "
+                "**Deux colonnes séparées** ci-dessus."
+            )
     else:
         col_date_sep = st.selectbox("Colonne date", cols,
                                     index=next((i for i, c in enumerate(cols)
@@ -346,7 +371,7 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("🦇 Séparateur d'individus — Acoustique chiroptères")
+st.title("🦇 Eol chiros trafic : convertisseur d'activité en estimations d'individus")
 st.caption(
     f"Fichier : **{uploaded.name}** · "
     f"Séparateur : **{sep_min} min** · "
