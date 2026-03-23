@@ -1,5 +1,5 @@
 """
-Séparateur d'individus — Acoustique chiroptères
+Acoustique chiroptères : conversion de l'activité en estimation d'individus
 ================================================
 Application Streamlit pour estimer le nombre d'individus à partir de
 données acoustiques de suivi de chauves-souris (méthode du séparateur,
@@ -28,7 +28,7 @@ except ImportError:
 # Configuration de la page
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Séparateur d'individus — Chiroptères",
+    page_title="Eol Chiros : Conversion de l'activité en estimation d'individus",
     page_icon="🦇",
     layout="wide",
     initial_sidebar_state="expanded",
