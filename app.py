@@ -346,7 +346,7 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("🦇 Séparateur d'individus — Acoustique chiroptères")
+st.title("🦇 Eol Chiros Trafic: Conversion de l'activité en estimation d'individus")
 st.caption(
     f"Fichier : **{uploaded.name}** · "
     f"Séparateur : **{sep_min} min** · "
