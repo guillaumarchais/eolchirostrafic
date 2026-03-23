@@ -1,5 +1,5 @@
 """
-Eol chiros trafic : convertisseur d'activité en estimations d'individus
+Séparateur d'individus — Acoustique chiroptères
 ================================================
 Application Streamlit pour estimer le nombre d'individus à partir de
 données acoustiques de suivi de chauves-souris (méthode du séparateur,
@@ -28,7 +28,7 @@ except ImportError:
 # Configuration de la page
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Eol chiros trafic : convertisseur d'activité en estimations d'individus",
+    page_title="Séparateur d'individus — Chiroptères",
     page_icon="🦇",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -89,51 +89,97 @@ def assign_individuals(times_sorted, separator_min):
 _HARTIGAN_CAP_DEFAULT = 90  # minutes
 
 
-def hartigan_dip(gaps, sep_min=20):
+def bimodality_coefficient(arr_log):
     """
-    Teste la bimodalité via Hartigan's Dip.
-    Retourne (D, p, warning_msg).
+    Bimodality Coefficient (BC) sur distribution log-transformée.
+    BC = (γ² + 1) / (κ_corr)  où γ = skewness, κ = kurtosis corrigé.
+    BC > 5/9 ≈ 0.555 suggère une distribution bimodale.
+    Référence : SAS Institute (1990), repris par Pfister et al. (2013).
+    Avantage vs Dip test : robuste aux distributions très déséquilibrées
+    (ratio courts/longs élevé), ce qui est typique en acoustique chiroptères.
+    """
+    n = len(arr_log)
+    if n < 4:
+        return None
+    s = float(pd.Series(arr_log).skew())
+    k = float(pd.Series(arr_log).kurtosis())  # excess kurtosis
+    # Correction de taille d'échantillon
+    k_corr = k + 3 * (n - 1)**2 / ((n - 2) * (n + 1))
+    if k_corr == 0:
+        return None
+    return (s**2 + 1) / k_corr
 
-    Les gaps sont plafonnés à max(4×sep_min, 90 min) avant le test.
-    Justification : les très longs gaps (>2h) forment une queue plate qui dilue
-    le 2e mode et fait échouer le test même quand la bimodalité est visuellement
-    évidente. Biologiquement, tout gap > 4×séparateur signifie "individu distinct"
-    — leur valeur exacte n'apporte aucune information supplémentaire au test.
+
+def test_bimodalite(gaps, sep_min=20):
     """
-    if not HAS_DIPTEST:
-        return None, None, "Package diptest non installé (`pip install diptest`)."
-    cap = max(4 * sep_min, _HARTIGAN_CAP_DEFAULT)
+    Teste la bimodalité des intervalles inter-contacts.
+    Retourne un dict avec :
+      - bc      : Bimodality Coefficient (log1p, cap=max(4×sep,90))
+      - bc_ok   : BC > 0.555
+      - dip_d   : statistique D du Dip test (si diptest installé)
+      - dip_p   : p-value du Dip test
+      - dip_ok  : p < 0.05
+      - n_test  : n utilisé pour le test (après cap + log)
+      - warn    : message si test non applicable (str ou None)
+    """
+    cap = max(4 * sep_min, 90)
     arr = np.asarray(gaps, dtype=float)
-    arr = arr[arr <= cap]
+    arr = arr[(arr >= 0) & (arr <= cap)]
     n = len(arr)
+
     if n < 30:
-        return None, None, (
-            f"Effectif insuffisant ({n} intervalles ≤ {cap} min, minimum 30 requis). "
-            "Augmentez le nombre de nuits analysées ou vérifiez le filtre espèce/période."
-        )
+        return {"bc": None, "bc_ok": None, "dip_d": None, "dip_p": None,
+                "dip_ok": None, "n_test": n, "cap": cap,
+                "warn": (f"Effectif insuffisant ({n} intervalles ≤ {cap} min, "
+                         "minimum 30 requis).")}
+
     pct_long = float(np.mean(arr > sep_min) * 100)
     if pct_long < 5:
-        return None, None, (
-            f"Mode long absent : seulement {pct_long:.1f} % des intervalles "
-            f"dépassent {sep_min} min (seuil : 5 %). "
-            "La distribution est quasi-unimodale. "
-            "Vérifiez que la période inclut des nuits à forte activité migratoire."
-        )
-    d, p = _diptest.diptest(arr)
-    return float(d), float(p), None
+        return {"bc": None, "bc_ok": None, "dip_d": None, "dip_p": None,
+                "dip_ok": None, "n_test": n, "cap": cap,
+                "warn": (f"Mode long absent : seulement {pct_long:.1f} % des intervalles "
+                         f"dépassent {sep_min} min (seuil : 5 %). "
+                         "Préférer l'activité brute pour cette espèce.")}
+
+    arr_log = np.log1p(arr)
+
+    bc = bimodality_coefficient(arr_log)
+    bc_ok = (bc > 0.555) if bc is not None else None
+
+    dip_d = dip_p = dip_ok = None
+    if HAS_DIPTEST:
+        dip_d, dip_p = _diptest.diptest(arr_log)
+        dip_d, dip_p = float(dip_d), float(dip_p)
+        dip_ok = dip_p < 0.05
+
+    return {"bc": bc, "bc_ok": bc_ok, "dip_d": dip_d, "dip_p": dip_p,
+            "dip_ok": dip_ok, "n_test": n, "cap": cap, "warn": None}
 
 
-def get_gaps_for_species(gap_df, sp, max_gap_min=480):
+def verdict_bimodalite(res):
     """
-    Extrait les intervalles intra-nuit pour une espèce depuis gap_df.
-    max_gap_min=480 filtre les artefacts > 8h (pour l'histogramme).
-    Le plafonnement pour le Dip test est géré dans hartigan_dip().
+    Interprétation synthétique du résultat des tests.
+    Retourne (label_court, emoji, detail).
     """
-    if gap_df.empty or sp not in gap_df["espece"].values:
-        return np.array([])
-    arr = gap_df[gap_df["espece"] == sp]["intervalle_min"].values.astype(float)
-    return arr[arr <= max_gap_min]
-
+    if res["warn"]:
+        return "N/A", "⛔", res["warn"]
+    bc_ok  = res["bc_ok"]
+    dip_ok = res["dip_ok"]
+    if dip_ok is None:
+        # Seulement BC disponible
+        if bc_ok:
+            return "confirmée (BC)", "✅", f"BC = {res['bc']:.3f} > 0.555"
+        else:
+            return "non confirmée", "⚠️", f"BC = {res['bc']:.3f} ≤ 0.555"
+    # Les deux tests disponibles
+    if bc_ok and dip_ok:
+        return "confirmée", "✅", f"BC={res['bc']:.3f}  D={res['dip_d']:.4f}  p={res['dip_p']:.4f}"
+    elif bc_ok and not dip_ok:
+        return "probable (BC✓ Dip✗)", "🟡", f"BC={res['bc']:.3f}  D={res['dip_d']:.4f}  p={res['dip_p']:.4f}"
+    elif not bc_ok and dip_ok:
+        return "probable (Dip✓ BC✗)", "🟡", f"BC={res['bc']:.3f}  D={res['dip_d']:.4f}  p={res['dip_p']:.4f}"
+    else:
+        return "non confirmée", "⚠️", f"BC={res['bc']:.3f}  D={res['dip_d']:.4f}  p={res['dip_p']:.4f}"
 
 
 def build_summary(df, separator_min):
@@ -516,30 +562,43 @@ with tab2:
                     delta="✓ > 5 %" if pct_long >= 5 else "✗ < 5 %",
                     delta_color="normal" if pct_long >= 5 else "inverse")
 
-    # ── Test de Hartigan ──
-    dip_stat, dip_pval, dip_warn = hartigan_dip(gaps_sp_hartigan, sep_min=sep_min)
+    # ── Tests de bimodalité ──
+    res = test_bimodalite(gaps_sp_hartigan, sep_min=sep_min)
+    label, emoji, detail = verdict_bimodalite(res)
 
-    if dip_warn:
-        st.warning(f"⚠️ **Test non applicable** : {dip_warn}")
-    elif dip_stat is not None:
-        col_h1, col_h2 = st.columns(2)
-        col_h1.metric("Hartigan's D", f"{dip_stat:.4f}")
-        col_h2.metric("p-value", f"{dip_pval:.4f}",
-                      delta="bimodal ✓" if dip_pval < 0.05 else "unimodal ✗",
-                      delta_color="normal" if dip_pval < 0.05 else "inverse")
-        if dip_pval < 0.05:
-            st.success(
-                f"✅ **Bimodalité confirmée** (D = {dip_stat:.4f}, p = {dip_pval:.4f} < 0.05) — "
-                f"le séparateur de **{sep_min} min** est validé pour *{sp_selected}*."
-            )
-        else:
-            st.warning(
-                f"⚠️ **Bimodalité non confirmée** (D = {dip_stat:.4f}, p = {dip_pval:.4f} ≥ 0.05) — "
-                f"le séparateur de **{sep_min} min** est à interpréter avec précaution. "
-                "Préférer l'activité brute pour cette espèce / période."
-            )
+    if res["warn"]:
+        st.warning(f"⛔ **Test non applicable** : {res['warn']}")
     else:
-        st.info("Installez `diptest` (`pip install diptest`) pour activer le test de Hartigan.")
+        col_h1, col_h2, col_h3 = st.columns(3)
+        col_h1.metric("BC (log)",
+                      f"{res['bc']:.3f}" if res["bc"] is not None else "—",
+                      delta="✓ > 0.555" if res["bc_ok"] else "✗ ≤ 0.555",
+                      delta_color="normal" if res["bc_ok"] else "inverse",
+                      help="Bimodality Coefficient sur log(intervalles). BC > 0.555 → bimodale.")
+        if res["dip_d"] is not None:
+            col_h2.metric("Dip D (log)", f"{res['dip_d']:.4f}")
+            col_h3.metric("p-value Dip", f"{res['dip_p']:.4f}",
+                          delta="✓ < 0.05" if res["dip_ok"] else "✗ ≥ 0.05",
+                          delta_color="normal" if res["dip_ok"] else "inverse")
+        else:
+            col_h2.metric("Dip D", "—", help="Installez `diptest` pour activer.")
+            col_h3.metric("p-value", "—")
+
+        if label.startswith("confirmée"):
+            st.success(f"{emoji} **Bimodalité {label}** — {detail} — "
+                       f"séparateur de **{sep_min} min** validé pour *{sp_selected}*.")
+        elif label.startswith("probable"):
+            st.info(f"{emoji} **Bimodalité {label}** — {detail} — "
+                    f"résultats des deux tests divergents, interpréter avec prudence.")
+        else:
+            st.warning(f"{emoji} **Bimodalité {label}** — {detail} — "
+                       f"préférer l'activité brute pour cette espèce / période.")
+        st.caption(
+            f"Tests calculés sur log₁₊ₓ(intervalles) plafonnés à {res['cap']} min "
+            f"(n={res['n_test']}). La transformation log compresse le pic court "
+            "et rend les deux modes comparables — recommandée pour les distributions "
+            "de temps inter-événements."
+        )
 
     # ── Histogramme ──
     if len(gaps_filtered) == 0:
@@ -585,41 +644,34 @@ with tab2:
 
     # ── Tableau récapitulatif toutes espèces ──
     st.markdown("---")
-    st.subheader("Résultats du test de Hartigan par espèce")
-    if not HAS_DIPTEST:
-        st.info("Package `diptest` non disponible (`pip install diptest`).")
-    else:
-        dip_rows = []
-        for sp in all_species:
-            g = get_gaps_for_species(gap_df, sp)
-            d, p, w = hartigan_dip(g, sep_min=sep_min)
-            n_sp   = len(g)
-            nl_sp  = int(np.sum(g > sep_min)) if n_sp else 0
-            pct_sp = (nl_sp / n_sp * 100) if n_sp else 0
-            dip_rows.append({
-                "Espèce": sp,
-                "N intervalles": n_sp,
-                "% longs": f"{pct_sp:.1f} %",
-                "Hartigan D": f"{d:.4f}" if d is not None else "—",
-                "p-value":    f"{p:.4f}" if p is not None else "—",
-                "Bimodalité": (
-                    "✅ confirmée"     if (p is not None and p < 0.05)
-                    else "⚠️ non confirmée" if (p is not None)
-                    else f"⛔ {w[:50]}…" if w else "—"
-                ),
-                "Séparateur valide": (
-                    "Oui" if (p is not None and p < 0.05)
-                    else "Non" if p is not None
-                    else "N/A"
-                ),
-            })
-        dip_table = pd.DataFrame(dip_rows)
-        st.dataframe(dip_table, use_container_width=True, hide_index=True)
-        st.caption(
-            "Le test de Hartigan requiert ≥ 30 intervalles et ≥ 5 % d'intervalles longs "
-            "(> 10 min) pour être interprétable. En dessous de ces seuils, "
-            "D ≈ 0 et p ≈ 1 sont des artefacts numériques sans signification."
-        )
+    st.subheader("Résultats des tests de bimodalité par espèce")
+    bm_rows = []
+    for sp in all_species:
+        g   = get_gaps_for_species(gap_df, sp)
+        res = test_bimodalite(g, sep_min=sep_min)
+        lbl, emj, det = verdict_bimodalite(res)
+        n_sp  = len(g)
+        nl_sp = int(np.sum(g > sep_min)) if n_sp else 0
+        bm_rows.append({
+            "Espèce":           sp,
+            "N gaps (brut)":   n_sp,
+            "N gaps (test)":   res["n_test"],
+            "% longs":         f"{(nl_sp/n_sp*100):.1f} %" if n_sp else "—",
+            "BC (log)":        f"{res['bc']:.3f}" if res["bc"] is not None else "—",
+            "Dip D":           f"{res['dip_d']:.4f}" if res["dip_d"] is not None else "—",
+            "p-value":         f"{res['dip_p']:.4f}" if res["dip_p"] is not None else "—",
+            "Bimodalité":      f"{emj} {lbl}",
+            "Séparateur valide": ("Oui" if "confirmée" in lbl else
+                                  "Probable" if "probable" in lbl else
+                                  "Non" if "non confirmée" in lbl else "N/A"),
+        })
+    bm_table = pd.DataFrame(bm_rows)
+    st.dataframe(bm_table, use_container_width=True, hide_index=True)
+    st.caption(
+        "BC = Bimodality Coefficient sur log₁₊ₓ(intervalles plafonnés). "
+        "BC > 0.555 → bimodale. Dip test calculé sur la même distribution log. "
+        "Plafond = max(4 × séparateur, 90 min)."
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -911,43 +963,44 @@ with tab5:
         key="dl_gaps"
     )
 
-    # ── Test de Hartigan ──
-    if HAS_DIPTEST:
-        st.markdown("---")
-        st.markdown("**3 · Résultats test de Hartigan's Dip**")
-        dip_rows = []
-        for sp in all_species:
-            g = get_gaps_for_species(gap_df, sp)
-            d, p, w = hartigan_dip(g, sep_min=sep_min)
-            n_sp  = len(g)
-            nl_sp = int(np.sum(g > sep_min)) if n_sp else 0
-            dip_rows.append({
-                "Espèce": sp,
-                "N intervalles": n_sp,
-                "N longs (> seuil)": nl_sp,
-                "% longs": f"{(nl_sp/n_sp*100):.1f} %" if n_sp else "—",
-                "Hartigan D": round(d, 6) if d is not None else None,
-                "p-value": round(p, 6) if p is not None else None,
-                "Bimodalité confirmée (p<0.05)": (p < 0.05) if p is not None else None,
-                "Séparateur valide": (
-                    "Oui" if (p is not None and p < 0.05)
-                    else "Non" if p is not None
-                    else f"N/A — {w[:80]}" if w else "N/A"
-                ),
-            })
-        dip_tbl = pd.DataFrame(dip_rows)
-        st.dataframe(dip_tbl, use_container_width=True, hide_index=True)
+    # ── Tests de bimodalité (export) ──
+    st.markdown("---")
+    st.markdown("**3 · Résultats tests de bimodalité (BC + Dip)**")
+    bm_rows_exp = []
+    for sp in all_species:
+        g   = get_gaps_for_species(gap_df, sp)
+        res = test_bimodalite(g, sep_min=sep_min)
+        lbl, emj, det = verdict_bimodalite(res)
+        n_sp  = len(g)
+        nl_sp = int(np.sum(g > sep_min)) if n_sp else 0
+        bm_rows_exp.append({
+            "Espèce":             sp,
+            "N gaps brut":        n_sp,
+            "N gaps (test)":      res["n_test"],
+            "Plafond (min)":      res["cap"],
+            "% longs":            round(nl_sp/n_sp*100, 1) if n_sp else None,
+            "BC (log)":           round(res["bc"], 4) if res["bc"] is not None else None,
+            "BC > 0.555":         res["bc_ok"],
+            "Dip D":              round(res["dip_d"], 6) if res["dip_d"] is not None else None,
+            "p-value Dip":        round(res["dip_p"], 6) if res["dip_p"] is not None else None,
+            "Bimodalité":         f"{emj} {lbl}",
+            "Séparateur valide":  ("Oui" if "confirmée" in lbl else
+                                   "Probable" if "probable" in lbl else
+                                   "Non" if "non confirmée" in lbl else "N/A"),
+        })
+    dip_tbl = pd.DataFrame(bm_rows_exp)
+    st.dataframe(dip_tbl, use_container_width=True, hide_index=True)
 
-        buf3 = io.BytesIO()
-        with pd.ExcelWriter(buf3, engine="openpyxl") as w:
-            dip_tbl.to_excel(w, sheet_name="Hartigan_Dip", index=False)
-        st.download_button(
-            "⬇️ Télécharger (Excel)",
-            buf3.getvalue(),
-            file_name="hartigan_dip.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="dl_dip"
-        )
+    buf3 = io.BytesIO()
+    with pd.ExcelWriter(buf3, engine="openpyxl") as w:
+        dip_tbl.to_excel(w, sheet_name="Tests_bimodalite", index=False)
+    st.download_button(
+        "⬇️ Télécharger (Excel)",
+        buf3.getvalue(),
+        file_name="tests_bimodalite.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="dl_dip"
+    )
 
     # ── Export complet multi-feuilles ──
     st.markdown("---")
@@ -957,7 +1010,7 @@ with tab5:
         summary_df.to_excel(w, sheet_name="Individus_nuit_espece", index=False)
         gap_export.to_excel(w, sheet_name="Intervalles", index=False)
         if HAS_DIPTEST:
-            dip_tbl.to_excel(w, sheet_name="Hartigan_Dip", index=False)
+            dip_tbl.to_excel(w, sheet_name="Tests_bimodalite", index=False)
         totaux.to_excel(w, sheet_name="Totaux_par_espece", index=False)
 
     st.download_button(
