@@ -580,10 +580,22 @@ with tab3:
         x="Contacts", y="Individus estimés", color="Espèce",
         color_discrete_map=species_color,
         hover_data=["Nuit acoustique", "Ratio ind./contacts"],
-        trendline="ols",
-        trendline_scope="overall",
         height=320,
     )
+    # Droite de régression manuelle (numpy, sans statsmodels)
+    x_all = ratio_df["Contacts"].values.astype(float)
+    y_all = ratio_df["Individus estimés"].values.astype(float)
+    if len(x_all) >= 2:
+        coeffs = np.polyfit(x_all, y_all, 1)
+        x_line = np.linspace(x_all.min(), x_all.max(), 100)
+        y_line = np.polyval(coeffs, x_line)
+        fig_ratio.add_trace(go.Scatter(
+            x=x_line, y=y_line,
+            mode="lines",
+            line=dict(color="#888", width=1.5, dash="dash"),
+            name=f"Régression (pente={coeffs[0]:.2f})",
+            showlegend=True,
+        ))
     fig_ratio.update_layout(margin=dict(t=10, b=40))
     st.plotly_chart(fig_ratio, use_container_width=True)
 
