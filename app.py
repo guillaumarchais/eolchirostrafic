@@ -83,14 +83,35 @@ def assign_individuals(times_sorted, separator_min):
 
 
 def hartigan_dip(gaps):
-    """Teste la bimodalité via Hartigan's Dip. Retourne (D, p) ou (None, None)."""
+    """
+    Teste la bimodalité via Hartigan's Dip.
+    Retourne (D, p, warning_msg).
+
+    Pré-requis pour un test fiable :
+    - Au moins 30 intervalles (effectif minimum)
+    - Au moins 5 % d'intervalles > 10 min (mode long présent)
+    Sans ces conditions, D≈0 / p≈1 est un artefact numérique, pas un résultat.
+    """
     if not HAS_DIPTEST:
-        return None, None
-    arr = np.asarray(gaps)
-    if len(arr) < 4:
-        return None, None
+        return None, None, "Package diptest non installé (`pip install diptest`)."
+    arr = np.asarray(gaps, dtype=float)
+    n = len(arr)
+    if n < 30:
+        return None, None, (
+            f"Effectif insuffisant ({n} intervalles disponibles, minimum 30 requis). "
+            "Augmentez le nombre de nuits analysées ou vérifiez le filtre espèce/période."
+        )
+    pct_long = float(np.mean(arr > 10) * 100)
+    if pct_long < 5:
+        return None, None, (
+            f"Mode long absent : seulement {pct_long:.1f} % des intervalles dépassent 10 min. "
+            "La distribution est quasi-unimodale (pic unique de courts intervalles intra-individus). "
+            "Cela signifie que les nuits analysées contiennent rarement plusieurs individus distincts "
+            "séparés de >10 min — le test ne peut pas distinguer les deux modes. "
+            "Vérifiez que la période inclut des nuits à forte activité migratoire."
+        )
     d, p = _diptest.diptest(arr)
-    return float(d), float(p)
+    return float(d), float(p), None
 
 
 def build_summary(df, separator_min):
@@ -110,7 +131,7 @@ def build_summary(df, separator_min):
 
 
 def build_gap_df(df, separator_min):
-    """Calcule tous les intervalles avec métadonnées (espèce, nuit, statut)."""
+    """Calcule tous les intervalles intra-nuit avec métadonnées (espèce, nuit, statut)."""
     rows = []
     for (night, sp), grp in df.groupby(["nuit_acoustique", "espece"], sort=True):
         times = sorted(grp["datetime"])
@@ -125,6 +146,27 @@ def build_gap_df(df, separator_min):
                 "t_fin": times[i],
             })
     return pd.DataFrame(rows)
+
+
+def build_gaps_for_hartigan(df):
+    """
+    Calcule les intervalles INTRA-NUIT pour le test de Hartigan, par espèce.
+    Pools tous les gaps de toutes les nuits pour une même espèce.
+    Exclut les gaps inter-nuits (qui ne représentent pas un comportement réel).
+    Retourne un dict {espece: array_of_gaps_minutes}.
+    """
+    result = {}
+    for sp, sp_grp in df.groupby("espece"):
+        all_gaps = []
+        for night, night_grp in sp_grp.groupby("nuit_acoustique"):
+            times = sorted(night_grp["datetime"])
+            for i in range(1, len(times)):
+                delta = (times[i] - times[i - 1]).total_seconds() / 60
+                # Exclure les gaps aberrants (>480 min = 8h, artefact de données)
+                if delta <= 480:
+                    all_gaps.append(delta)
+        result[sp] = np.array(all_gaps)
+    return result
 
 
 def parse_file(uploaded):
@@ -303,6 +345,7 @@ species_color = {sp: SPECIES_COLORS[i % len(SPECIES_COLORS)]
 # ─────────────────────────────────────────────────────────────────────────────
 summary_df = build_summary(df_work, sep_min)
 gap_df = build_gap_df(df_work, sep_min)
+gaps_hartigan = build_gaps_for_hartigan(df_work)  # dict {espece: array} pour le test de Hartigan
 
 n_nights = df_work["nuit_acoustique"].nunique()
 total_contacts = len(df_work)
@@ -421,115 +464,136 @@ with tab2:
             help="Pour zoomer sur la zone du séparateur."
         )
 
-    # Tous les gaps pour cette espèce (toutes nuits confondues)
+    # Intervalles intra-nuit poolés pour cette espèce (source pour Hartigan)
+    gaps_sp_hartigan = gaps_hartigan.get(sp_selected, np.array([]))
+    # Intervalles avec métadonnées (pour l'histogramme et le tableau)
     if gap_df.empty or sp_selected not in gap_df["espece"].values:
-        st.info("Pas d'intervalles calculables pour cette espèce (moins de 2 contacts par nuit).")
+        gaps_sp = np.array([])
     else:
         gaps_sp = gap_df[gap_df["espece"] == sp_selected]["intervalle_min"].values
-        gaps_filtered = gaps_sp[gaps_sp <= max_gap_display]
 
-        # Test de Hartigan
-        dip_stat, dip_pval = hartigan_dip(gaps_sp)
+    gaps_filtered = gaps_sp[gaps_sp <= max_gap_display] if len(gaps_sp) else np.array([])
 
-        # Résultat du test
-        col_dip1, col_dip2, col_dip3 = st.columns(3)
-        col_dip1.metric("Intervalles analysés", f"{len(gaps_sp):,}")
+    # ── Diagnostics de la distribution ──
+    n_total = len(gaps_sp_hartigan)
+    n_short = int(np.sum(gaps_sp_hartigan <= sep_min)) if n_total else 0
+    n_long  = int(np.sum(gaps_sp_hartigan >  sep_min)) if n_total else 0
+    pct_long = (n_long / n_total * 100) if n_total else 0
 
-        if dip_stat is not None:
-            col_dip2.metric("Hartigan's D", f"{dip_stat:.4f}")
-            pval_color = "normal" if dip_pval < 0.05 else "inverse"
-            col_dip3.metric("p-value", f"{dip_pval:.4f}",
-                            delta="bimodal ✓" if dip_pval < 0.05 else "unimodal ✗",
-                            delta_color=pval_color)
+    col_dip1, col_dip2, col_dip3, col_dip4 = st.columns(4)
+    col_dip1.metric("Intervalles analysés", f"{n_total:,}")
+    col_dip2.metric(f"Courts (≤ {sep_min} min)", f"{n_short:,}",
+                    help="Intervalles intra-individu (même individu probable)")
+    col_dip3.metric(f"Longs (> {sep_min} min)", f"{n_long:,}",
+                    help="Intervalles inter-individus (nouvel individu probable)")
+    col_dip4.metric("% longs", f"{pct_long:.1f} %",
+                    delta="✓ > 5 %" if pct_long >= 5 else "✗ < 5 %",
+                    delta_color="normal" if pct_long >= 5 else "inverse")
+
+    # ── Test de Hartigan ──
+    dip_stat, dip_pval, dip_warn = hartigan_dip(gaps_sp_hartigan)
+
+    if dip_warn:
+        st.warning(f"⚠️ **Test non applicable** : {dip_warn}")
+    elif dip_stat is not None:
+        col_h1, col_h2 = st.columns(2)
+        col_h1.metric("Hartigan's D", f"{dip_stat:.4f}")
+        col_h2.metric("p-value", f"{dip_pval:.4f}",
+                      delta="bimodal ✓" if dip_pval < 0.05 else "unimodal ✗",
+                      delta_color="normal" if dip_pval < 0.05 else "inverse")
+        if dip_pval < 0.05:
+            st.success(
+                f"✅ **Bimodalité confirmée** (D = {dip_stat:.4f}, p = {dip_pval:.4f} < 0.05) — "
+                f"le séparateur de **{sep_min} min** est validé pour *{sp_selected}*."
+            )
         else:
-            col_dip2.metric("Hartigan's D", "—")
-            col_dip3.metric("p-value", "—")
+            st.warning(
+                f"⚠️ **Bimodalité non confirmée** (D = {dip_stat:.4f}, p = {dip_pval:.4f} ≥ 0.05) — "
+                f"le séparateur de **{sep_min} min** est à interpréter avec précaution. "
+                "Préférer l'activité brute pour cette espèce / période."
+            )
+    else:
+        st.info("Installez `diptest` (`pip install diptest`) pour activer le test de Hartigan.")
 
-        # Interprétation
-        if dip_stat is not None:
-            if dip_pval < 0.05:
-                st.success(
-                    f"✅ **Bimodalité confirmée** (D = {dip_stat:.4f}, p = {dip_pval:.4f} < 0.05) — "
-                    f"le séparateur de **{sep_min} min** est validé pour *{sp_selected}*."
-                )
-            else:
-                st.warning(
-                    f"⚠️ **Bimodalité non confirmée** (D = {dip_stat:.4f}, p = {dip_pval:.4f} ≥ 0.05) — "
-                    f"le séparateur de **{sep_min} min** est à interpréter avec précaution. "
-                    "Préférer l'activité brute pour cette espèce / période."
-                )
-        else:
-            st.info("Installez `diptest` (`pip install diptest`) pour activer le test de Hartigan.")
-
-        # Histogramme de la distribution
+    # ── Histogramme ──
+    if len(gaps_filtered) == 0:
+        st.info("Pas d'intervalles à afficher pour cette espèce.")
+    else:
         fig_gap = go.Figure()
-
-        # Intervalles ≤ seuil (même individu)
         gaps_same = gaps_filtered[gaps_filtered <= sep_min]
-        gaps_new = gaps_filtered[gaps_filtered > sep_min]
+        gaps_new  = gaps_filtered[gaps_filtered >  sep_min]
 
         if len(gaps_same) > 0:
             fig_gap.add_trace(go.Histogram(
                 x=gaps_same,
                 name=f"≤ {sep_min} min (même individu)",
-                marker_color="#1D9E75",
-                opacity=0.85,
+                marker_color="#1D9E75", opacity=0.85,
                 xbins=dict(size=1),
             ))
         if len(gaps_new) > 0:
             fig_gap.add_trace(go.Histogram(
                 x=gaps_new,
                 name=f"> {sep_min} min (nouvel individu)",
-                marker_color="#E24B4A",
-                opacity=0.85,
+                marker_color="#E24B4A", opacity=0.85,
                 xbins=dict(size=1),
             ))
 
-        # Ligne verticale du séparateur
         fig_gap.add_vline(
             x=sep_min, line_dash="dash", line_color="#888",
             annotation_text=f"Seuil = {sep_min} min",
             annotation_position="top right",
         )
-
         fig_gap.update_layout(
             barmode="overlay",
             xaxis_title="Intervalle (minutes)",
             yaxis_title="Nombre d'intervalles",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
-            height=380,
-            margin=dict(t=20, b=40),
+            height=380, margin=dict(t=20, b=40),
         )
         st.plotly_chart(fig_gap, use_container_width=True)
-
         st.caption(
             f"Intervalles > {max_gap_display} min exclus de l'affichage "
-            f"({len(gaps_sp) - len(gaps_filtered)} intervalles masqués). "
-            "Le test de Hartigan porte sur la distribution complète."
+            f"({max(0, len(gaps_sp) - len(gaps_filtered))} intervalles masqués). "
+            "Le test de Hartigan porte sur la distribution complète (sans coupure)."
         )
 
-        # Tableau récapitulatif par espèce (toutes espèces)
-        st.markdown("---")
-        st.subheader("Résultats du test de Hartigan par espèce")
-        if not HAS_DIPTEST:
-            st.info("Package `diptest` non disponible.")
-        else:
-            dip_rows = []
-            for sp in all_species:
-                g = gap_df[gap_df["espece"] == sp]["intervalle_min"].values
-                d, p = hartigan_dip(g)
-                dip_rows.append({
-                    "Espèce": sp,
-                    "N intervalles": len(g),
-                    "Hartigan D": f"{d:.4f}" if d is not None else "—",
-                    "p-value": f"{p:.4f}" if p is not None else "—",
-                    "Bimodalité": ("✅ confirmée" if (p is not None and p < 0.05)
-                                   else ("⚠️ non confirmée" if p is not None else "—")),
-                    "Séparateur valide": ("Oui" if (p is not None and p < 0.05)
-                                          else ("Non" if p is not None else "N/A")),
-                })
-            dip_table = pd.DataFrame(dip_rows)
-            st.dataframe(dip_table, use_container_width=True, hide_index=True)
+    # ── Tableau récapitulatif toutes espèces ──
+    st.markdown("---")
+    st.subheader("Résultats du test de Hartigan par espèce")
+    if not HAS_DIPTEST:
+        st.info("Package `diptest` non disponible (`pip install diptest`).")
+    else:
+        dip_rows = []
+        for sp in all_species:
+            g = gaps_hartigan.get(sp, np.array([]))
+            d, p, w = hartigan_dip(g)
+            n_sp   = len(g)
+            nl_sp  = int(np.sum(g > sep_min)) if n_sp else 0
+            pct_sp = (nl_sp / n_sp * 100) if n_sp else 0
+            dip_rows.append({
+                "Espèce": sp,
+                "N intervalles": n_sp,
+                "% longs": f"{pct_sp:.1f} %",
+                "Hartigan D": f"{d:.4f}" if d is not None else "—",
+                "p-value":    f"{p:.4f}" if p is not None else "—",
+                "Bimodalité": (
+                    "✅ confirmée"     if (p is not None and p < 0.05)
+                    else "⚠️ non confirmée" if (p is not None)
+                    else f"⛔ {w[:50]}…" if w else "—"
+                ),
+                "Séparateur valide": (
+                    "Oui" if (p is not None and p < 0.05)
+                    else "Non" if p is not None
+                    else "N/A"
+                ),
+            })
+        dip_table = pd.DataFrame(dip_rows)
+        st.dataframe(dip_table, use_container_width=True, hide_index=True)
+        st.caption(
+            "Le test de Hartigan requiert ≥ 30 intervalles et ≥ 5 % d'intervalles longs "
+            "(> 10 min) pour être interprétable. En dessous de ces seuils, "
+            "D ≈ 0 et p ≈ 1 sont des artefacts numériques sans signification."
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -827,15 +891,23 @@ with tab5:
         st.markdown("**3 · Résultats test de Hartigan's Dip**")
         dip_rows = []
         for sp in all_species:
-            g = gap_df[gap_df["espece"] == sp]["intervalle_min"].values
-            d, p = hartigan_dip(g)
+            g = gaps_hartigan.get(sp, np.array([]))
+            d, p, w = hartigan_dip(g)
+            n_sp  = len(g)
+            nl_sp = int(np.sum(g > sep_min)) if n_sp else 0
             dip_rows.append({
                 "Espèce": sp,
-                "N intervalles": len(g),
+                "N intervalles": n_sp,
+                "N longs (> seuil)": nl_sp,
+                "% longs": f"{(nl_sp/n_sp*100):.1f} %" if n_sp else "—",
                 "Hartigan D": round(d, 6) if d is not None else None,
                 "p-value": round(p, 6) if p is not None else None,
                 "Bimodalité confirmée (p<0.05)": (p < 0.05) if p is not None else None,
-                "Séparateur valide": ("Oui" if (p is not None and p < 0.05) else "Non"),
+                "Séparateur valide": (
+                    "Oui" if (p is not None and p < 0.05)
+                    else "Non" if p is not None
+                    else f"N/A — {w[:80]}" if w else "N/A"
+                ),
             })
         dip_tbl = pd.DataFrame(dip_rows)
         st.dataframe(dip_tbl, use_container_width=True, hide_index=True)
