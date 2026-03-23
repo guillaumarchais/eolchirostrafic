@@ -28,7 +28,7 @@ except ImportError:
 # Configuration de la page
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Séparateur d'individus — Chiroptères",
+    page_title="Eol chiros trafic : convertisseur d'activité en estimations d'individus",
     page_icon="🦇",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -133,6 +133,41 @@ def get_gaps_for_species(gap_df, sp, max_gap_min=480):
         return np.array([])
     arr = gap_df[gap_df["espece"] == sp]["intervalle_min"].values.astype(float)
     return arr[arr <= max_gap_min]
+
+
+
+def build_summary(df, separator_min):
+    """Calcule le nombre d'individus estimés par nuit × espèce."""
+    rows = []
+    for (night, sp), grp in df.groupby(["nuit_acoustique", "espece"], sort=True):
+        times = sorted(grp["datetime"])
+        individus = assign_individuals(times, separator_min)
+        n_ind = int(individus.max()) if len(individus) else 0
+        rows.append({
+            "Nuit acoustique": night,
+            "Espèce": sp,
+            "Contacts": len(grp),
+            "Individus estimés": n_ind,
+        })
+    return pd.DataFrame(rows)
+
+
+def build_gap_df(df, separator_min):
+    """Calcule tous les intervalles intra-nuit avec métadonnées (espèce, nuit, statut)."""
+    rows = []
+    for (night, sp), grp in df.groupby(["nuit_acoustique", "espece"], sort=True):
+        times = sorted(grp["datetime"])
+        for i in range(1, len(times)):
+            delta = (times[i] - times[i - 1]).total_seconds() / 60
+            rows.append({
+                "nuit_acoustique": night,
+                "espece": sp,
+                "intervalle_min": delta,
+                "nouveau_individu": delta > separator_min,
+                "t_debut": times[i - 1],
+                "t_fin": times[i],
+            })
+    return pd.DataFrame(rows)
 
 
 def parse_file(uploaded):
@@ -346,7 +381,7 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("🦇 Eol chiros trafic : convertisseur d'activité en estimations d'individus")
+st.title("🦇 Séparateur d'individus — Acoustique chiroptères")
 st.caption(
     f"Fichier : **{uploaded.name}** · "
     f"Séparateur : **{sep_min} min** · "
