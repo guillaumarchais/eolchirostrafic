@@ -470,7 +470,7 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("🦇 Eol chiros trafic : convertisseur d'activité en estimations d'individus")
+st.title("🦇 Séparateur d'individus — Acoustique chiroptères")
 st.caption(
     f"Fichier : **{uploaded.name}** · "
     f"Séparateur : **{sep_min} min** · "
@@ -1137,13 +1137,14 @@ with tab6:
 
             if valide:
                 # ── Texte complet avec individus estimés ──────────────────
+                bc_str   = f"{res['bc']:.3f}" if res["bc"] is not None else "N/A"
                 txt = f"""**{sp}**
 
 Au cours de la période de suivi ({periode_debut} au {periode_fin}, {n_nuits_total} nuits), l'espèce *{sp}* a été contactée {n_contacts_total} fois sur {n_nuits_sp} nuits de présence, soit en moyenne {contacts_moy} contacts/nuit.
 
 **Estimation du nombre d'individus (méthode du séparateur, {sep_min} min)**
 
-Le test de bimodalité des intervalles entre contacts (Bimodality Coefficient, BC = {res["bc"]:.3f if res["bc"] is not None else "N/A"}) confirme la structure bimodale de la distribution : un pic d'intervalles courts (< {sep_min} min, intra-individu) et un second pic d'intervalles longs (> {sep_min} min, inter-individus). La méthode du séparateur est donc applicable pour cette espèce.
+Le test de bimodalité des intervalles entre contacts (Bimodality Coefficient, BC = {bc_str}) confirme la structure bimodale de la distribution : un pic d'intervalles courts (< {sep_min} min, intra-individu) et un second pic d'intervalles longs (> {sep_min} min, inter-individus). La méthode du séparateur est donc applicable pour cette espèce.
 
 Un total de **{n_ind_total} individus distincts** a été estimé sur l'ensemble de la période, soit une moyenne de **{ind_moy} individu(s) par nuit de présence**. La nuit la plus active est celle du {pic_date} avec {pic_ind} individu(s) estimé(s).
 
@@ -1164,9 +1165,10 @@ Ces résultats constituent une estimation minimale conservative du nombre d'indi
                                   f"({round(float(np.mean(g > sep_min)*100) if len(g) else 0, 1)} % "
                                   f"des intervalles dépassent {sep_min} min)")
                 elif "non confirmée" in lbl:
+                    bc_str_nc  = f"{res['bc']:.3f}" if res["bc"] is not None else "N/A"
                     motif_excl = (f"la distribution des intervalles ne présente pas "
                                   f"de structure bimodale significative "
-                                  f"(BC = {res['bc']:.3f if res['bc'] is not None else 'N/A'})")
+                                  f"(BC = {bc_str_nc})")
                 else:
                     motif_excl = "les conditions d'application du test de bimodalité ne sont pas réunies"
 
@@ -1194,7 +1196,7 @@ La nuit la plus active est celle du {pic_date}. Ces données d'activité permett
                         f"{n_contacts_total} fois sur {n_nuits_sp} nuits de présence, "
                         f"soit en moyenne {contacts_moy} contacts/nuit.\n\n"
                         f"Estimation du nombre d'individus (méthode du séparateur, {sep_min} min)\n\n"
-                        f"Le test de bimodalité (BC = {res['bc']:.3f if res['bc'] is not None else 'N/A'}) "
+                        f"Le test de bimodalité (BC = {bc_str}) "
                         f"confirme l'applicabilité de la méthode du séparateur pour cette espèce. "
                         f"Un total de {n_ind_total} individus distincts a été estimé sur l'ensemble de la période, "
                         f"soit une moyenne de {ind_moy} individu(s) par nuit de présence. "
