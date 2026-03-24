@@ -1,5 +1,5 @@
 """
-Séparateur d'individus — Acoustique chiroptères
+Eol chiros trafic : convertisseur d'activité en estimations d'individus
 ================================================
 Application Streamlit pour estimer le nombre d'individus à partir de
 données acoustiques de suivi de chauves-souris (méthode du séparateur,
@@ -180,6 +180,19 @@ def verdict_bimodalite(res):
         return "probable (Dip✓ BC✗)", "🟡", f"BC={res['bc']:.3f}  D={res['dip_d']:.4f}  p={res['dip_p']:.4f}"
     else:
         return "non confirmée", "⚠️", f"BC={res['bc']:.3f}  D={res['dip_d']:.4f}  p={res['dip_p']:.4f}"
+
+
+
+def get_gaps_for_species(gap_df, sp, max_gap_min=480):
+    """
+    Extrait les intervalles intra-nuit pour une espèce depuis gap_df.
+    max_gap_min=480 filtre les artefacts > 8h (pour l'histogramme).
+    Le plafonnement pour les tests de bimodalité est géré dans test_bimodalite().
+    """
+    if gap_df.empty or sp not in gap_df["espece"].values:
+        return np.array([])
+    arr = gap_df[gap_df["espece"] == sp]["intervalle_min"].values.astype(float)
+    return arr[arr <= max_gap_min]
 
 
 def build_summary(df, separator_min):
@@ -427,7 +440,7 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("🦇 Séparateur d'individus — Acoustique chiroptères")
+st.title("🦇 Eol chiros trafic : convertisseur d'activité en estimations d'individus")
 st.caption(
     f"Fichier : **{uploaded.name}** · "
     f"Séparateur : **{sep_min} min** · "
