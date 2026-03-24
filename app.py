@@ -42,7 +42,7 @@ def load_demo_csv():
 # Configuration de la page
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Eol chiros trafic : convertisseur d'activité en estimations d'individus",
+    page_title="Séparateur d'individus — Chiroptères",
     page_icon="🦇",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -1146,9 +1146,11 @@ Au cours de la période de suivi ({periode_debut} au {periode_fin}, {n_nuits_tot
 
 Le test de bimodalité des intervalles entre contacts (Bimodality Coefficient, BC = {bc_str}) confirme la structure bimodale de la distribution : un pic d'intervalles courts (< {sep_min} min, intra-individu) et un second pic d'intervalles longs (> {sep_min} min, inter-individus). La méthode du séparateur est donc applicable pour cette espèce.
 
-Un total de **{n_ind_total} individus distincts** a été estimé sur l'ensemble de la période, soit une moyenne de **{ind_moy} individu(s) par nuit de présence**. La nuit la plus active est celle du {pic_date} avec {pic_ind} individu(s) estimé(s).
+Un total de **{n_ind_total} occurrences d'individus distincts** a été estimé sur l'ensemble de la période, soit une moyenne de **{ind_moy} occurrence(s) d'individu(s) par nuit de présence**. La nuit la plus active est celle du {pic_date} avec {pic_ind} individu(s) estimé(s).
 
-Ces résultats constituent une estimation minimale conservative du nombre d'individus ayant transité devant le capteur (Seebens-Hoyer et al., 2026). Ils permettent d'évaluer l'exposition potentielle de l'espèce au risque de collision avec les éoliennes et de dimensionner les mesures de bridage à mettre en œuvre.
+⚠️ *Note : un même individu peut être détecté à plusieurs reprises au cours de nuits successives. Le total ci-dessus représente donc le cumul des occurrences nocturnes d'individus distincts au sein de chaque nuit, et non nécessairement le nombre d'individus uniques sur l'ensemble de la période de suivi.*
+
+Ces résultats constituent une estimation minimale conservative (Seebens-Hoyer et al., 2026). Ils permettent d'évaluer l'exposition potentielle de l'espèce au risque de collision avec les éoliennes et de dimensionner les mesures de bridage à mettre en œuvre.
 
 *Référence : Seebens-Hoyer et al. (2026). Estimating the traffic rates of bats migrating across the North and Baltic Seas to develop efficient mitigation measures at offshore wind energy facilities. Biological Conservation, 316, 111741.*"""
 
@@ -1179,6 +1181,8 @@ Au cours de la période de suivi ({periode_debut} au {periode_fin}, {n_nuits_tot
 **Indicateur retenu : activité brute (contacts)**
 
 La méthode du séparateur n'a pas été appliquée pour cette espèce, {motif_excl}. L'activité brute est conservée comme indicateur de fréquentation du site.
+
+Par défaut, on peut néanmoins retenir qu'au moins **un individu distinct** a été détecté pour chaque nuit de présence, quel que soit le nombre de contacts enregistrés au cours de cette même nuit. Cela représente un minimum de **{n_nuits_sp} occurrence(s) d'individu(s)** sur l'ensemble de la période.
 
 La nuit la plus active est celle du {pic_date}. Ces données d'activité permettent de qualifier la présence de l'espèce sur le site d'étude, mais ne permettent pas d'estimer le nombre d'individus distincts ayant transité. En l'absence de conversion en individus, l'appréciation du risque de collision doit s'appuyer sur les indices d'activité brute et les données bibliographiques disponibles pour l'espèce."""
 
@@ -1223,3 +1227,12 @@ La nuit la plus active est celle du {pic_date}. Ces données d'activité permett
         "Ils doivent être adaptés au contexte de l'étude (type de projet, localisation, "
         "espèces protégées concernées) avant intégration dans un rapport réglementaire."
     )
+
+# ── Crédit auteur ─────────────────────────────────────────────────────────────
+st.markdown(
+    "<div style='text-align: right; color: var(--text-color, #888); "
+    "font-size: 11px; margin-top: 2rem; padding-right: 0.5rem;'>"
+    "Application conçue par Guillaume Marchais"
+    "</div>",
+    unsafe_allow_html=True,
+)
