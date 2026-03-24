@@ -860,17 +860,25 @@ with tab4:
             )
 
         # Lignes de séparation (gaps > seuil)
-        # Plotly add_vline exige une string ISO ou un float Unix, pas un Timestamp
+        # add_vline + annotation échoue sur axe datetime dans Plotly 5.x
+        # → add_shape (ligne) + add_annotation (texte) séparés
         if len(gaps_night) > 0:
             for i, g in enumerate(gaps_night):
                 if g > sep_min:
                     x_iso = times_sorted[i + 1].isoformat()
-                    fig_tl.add_vline(
-                        x=x_iso,
-                        line_dash="dash", line_color="#E24B4A", line_width=1,
-                        annotation_text=f"+{g:.0f}′",
-                        annotation_font_size=10,
-                        annotation_position="top",
+                    fig_tl.add_shape(
+                        type="line",
+                        x0=x_iso, x1=x_iso, y0=0, y1=1,
+                        xref="x", yref="paper",
+                        line=dict(dash="dash", color="#E24B4A", width=1),
+                    )
+                    fig_tl.add_annotation(
+                        x=x_iso, y=1.05,
+                        xref="x", yref="paper",
+                        text=f"+{g:.0f}′",
+                        showarrow=False,
+                        font=dict(size=10, color="#E24B4A"),
+                        xanchor="center",
                     )
 
         fig_tl.update_layout(
