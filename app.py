@@ -1,5 +1,5 @@
 """
-Séparateur d'individus — Acoustique chiroptères
+Eol chiros trafic : convertisseur d'activité en estimations d'individus
 ================================================
 Application Streamlit pour estimer le nombre d'individus à partir de
 données acoustiques de suivi de chauves-souris (méthode du séparateur,
@@ -470,7 +470,7 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("🦇 Séparateur d'individus — Acoustique chiroptères")
+st.title("🦇 Eol chiros trafic : convertisseur d'activité en estimations d'individus")
 st.caption(
     f"Fichier : **{uploaded.name}** · "
     f"Séparateur : **{sep_min} min** · "
@@ -489,12 +489,13 @@ st.divider()
 # ─────────────────────────────────────────────────────────────────────────────
 # Onglets
 # ─────────────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📋 Données",
     "📊 Distribution des intervalles",
     "🦇 Estimation par nuit",
     "🗓️ Vue phénologique",
     "💾 Export",
+    "📝 Rapport",
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1089,3 +1090,134 @@ with tab5:
         "Référence méthode": "Seebens-Hoyer et al. (2026), Biological Conservation 316, 111741",
     }
     st.json(params)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 6 — Rapport
+# ══════════════════════════════════════════════════════════════════════════════
+with tab6:
+    st.subheader("Rapport — Texte de conclusion par espèce")
+    st.markdown(
+        "Ce texte synthétique est prêt à être intégré dans un rapport d'étude d'impact. "
+        "Il est généré automatiquement à partir des résultats de l'analyse avec le séparateur "
+        f"de **{sep_min} min** et la méthode Seebens-Hoyer et al. (2026)."
+    )
+
+    # Calculs préliminaires pour le rapport
+    periode_debut = str(df_work["nuit_acoustique"].min())
+    periode_fin   = str(df_work["nuit_acoustique"].max())
+    n_nuits_total = df_work["nuit_acoustique"].nunique()
+
+    for sp in all_species:
+        g   = get_gaps_for_species(gap_df, sp)
+        res = test_bimodalite(g, sep_min=sep_min)
+        lbl, emj, det = verdict_bimodalite(res)
+
+        # Données brutes espèce
+        sp_data   = summary_df[summary_df["Espèce"] == sp]
+        n_contacts_total = int(df_work[df_work["espece"] == sp].shape[0])
+        n_nuits_sp       = int(sp_data["Nuit acoustique"].nunique())
+        n_ind_total      = int(sp_data["Individus estimés"].sum())
+        contacts_moy     = round(n_contacts_total / n_nuits_sp, 1) if n_nuits_sp else 0
+        ind_moy          = round(n_ind_total / n_nuits_sp, 1) if n_nuits_sp else 0
+
+        # Pic d'activité (nuit avec le plus d'individus)
+        if not sp_data.empty and "confirmée" in lbl or "probable" in lbl:
+            pic_row  = sp_data.loc[sp_data["Individus estimés"].idxmax()]
+            pic_date = str(pic_row["Nuit acoustique"])
+            pic_ind  = int(pic_row["Individus estimés"])
+        else:
+            pic_row  = sp_data.loc[sp_data["Contacts"].idxmax()] if not sp_data.empty else None
+            pic_date = str(pic_row["Nuit acoustique"]) if pic_row is not None else "—"
+            pic_ind  = None
+
+        valide = "confirmée" in lbl or "probable" in lbl
+
+        with st.expander(f"{emj} {sp}", expanded=True):
+
+            if valide:
+                # ── Texte complet avec individus estimés ──────────────────
+                txt = f"""**{sp}**
+
+Au cours de la période de suivi ({periode_debut} au {periode_fin}, {n_nuits_total} nuits), l'espèce *{sp}* a été contactée {n_contacts_total} fois sur {n_nuits_sp} nuits de présence, soit en moyenne {contacts_moy} contacts/nuit.
+
+**Estimation du nombre d'individus (méthode du séparateur, {sep_min} min)**
+
+Le test de bimodalité des intervalles entre contacts (Bimodality Coefficient, BC = {res["bc"]:.3f if res["bc"] is not None else "N/A"}) confirme la structure bimodale de la distribution : un pic d'intervalles courts (< {sep_min} min, intra-individu) et un second pic d'intervalles longs (> {sep_min} min, inter-individus). La méthode du séparateur est donc applicable pour cette espèce.
+
+Un total de **{n_ind_total} individus distincts** a été estimé sur l'ensemble de la période, soit une moyenne de **{ind_moy} individu(s) par nuit de présence**. La nuit la plus active est celle du {pic_date} avec {pic_ind} individu(s) estimé(s).
+
+Ces résultats constituent une estimation minimale conservative du nombre d'individus ayant transité devant le capteur (Seebens-Hoyer et al., 2026). Ils permettent d'évaluer l'exposition potentielle de l'espèce au risque de collision avec les éoliennes et de dimensionner les mesures de bridage à mettre en œuvre.
+
+*Référence : Seebens-Hoyer et al. (2026). Estimating the traffic rates of bats migrating across the North and Baltic Seas to develop efficient mitigation measures at offshore wind energy facilities. Biological Conservation, 316, 111741.*"""
+
+            else:
+                # ── Texte simplifié : activité brute uniquement ────────────
+                motif_excl = ""
+                if res["warn"] and "Effectif" in res["warn"]:
+                    motif_excl = (f"en raison d'un effectif insuffisant "
+                                  f"({res['n_test']} intervalles disponibles, "
+                                  f"minimum 30 requis pour le test de bimodalité)")
+                elif res["warn"] and "Mode long" in res["warn"]:
+                    motif_excl = (f"en raison de l'absence de mode long "
+                                  f"dans la distribution des intervalles "
+                                  f"({round(float(np.mean(g > sep_min)*100) if len(g) else 0, 1)} % "
+                                  f"des intervalles dépassent {sep_min} min)")
+                elif "non confirmée" in lbl:
+                    motif_excl = (f"la distribution des intervalles ne présente pas "
+                                  f"de structure bimodale significative "
+                                  f"(BC = {res['bc']:.3f if res['bc'] is not None else 'N/A'})")
+                else:
+                    motif_excl = "les conditions d'application du test de bimodalité ne sont pas réunies"
+
+                txt = f"""**{sp}**
+
+Au cours de la période de suivi ({periode_debut} au {periode_fin}, {n_nuits_total} nuits), l'espèce *{sp}* a été contactée {n_contacts_total} fois sur {n_nuits_sp} nuits de présence, soit en moyenne {contacts_moy} contacts/nuit.
+
+**Indicateur retenu : activité brute (contacts)**
+
+La méthode du séparateur n'a pas été appliquée pour cette espèce, {motif_excl}. L'activité brute est conservée comme indicateur de fréquentation du site.
+
+La nuit la plus active est celle du {pic_date}. Ces données d'activité permettent de qualifier la présence de l'espèce sur le site d'étude, mais ne permettent pas d'estimer le nombre d'individus distincts ayant transité. En l'absence de conversion en individus, l'appréciation du risque de collision doit s'appuyer sur les indices d'activité brute et les données bibliographiques disponibles pour l'espèce."""
+
+            # Affichage du texte
+            st.markdown(txt)
+
+            # Bouton copier (via st.code pour faciliter la copie)
+            with st.popover("📋 Copier le texte brut"):
+                # Version sans markdown pour insertion dans un rapport Word
+                if valide:
+                    txt_raw = (
+                        f"{sp}\n\n"
+                        f"Au cours de la période de suivi ({periode_debut} au {periode_fin}, "
+                        f"{n_nuits_total} nuits), l'espèce {sp} a été contactée "
+                        f"{n_contacts_total} fois sur {n_nuits_sp} nuits de présence, "
+                        f"soit en moyenne {contacts_moy} contacts/nuit.\n\n"
+                        f"Estimation du nombre d'individus (méthode du séparateur, {sep_min} min)\n\n"
+                        f"Le test de bimodalité (BC = {res['bc']:.3f if res['bc'] is not None else 'N/A'}) "
+                        f"confirme l'applicabilité de la méthode du séparateur pour cette espèce. "
+                        f"Un total de {n_ind_total} individus distincts a été estimé sur l'ensemble de la période, "
+                        f"soit une moyenne de {ind_moy} individu(s) par nuit de présence. "
+                        f"La nuit la plus active est celle du {pic_date} avec {pic_ind} individu(s) estimé(s). "
+                        f"Ces résultats constituent une estimation minimale conservative (Seebens-Hoyer et al., 2026).\n\n"
+                        f"Référence : Seebens-Hoyer et al. (2026), Biological Conservation, 316, 111741."
+                    )
+                else:
+                    txt_raw = (
+                        f"{sp}\n\n"
+                        f"Au cours de la période de suivi ({periode_debut} au {periode_fin}, "
+                        f"{n_nuits_total} nuits), l'espèce {sp} a été contactée "
+                        f"{n_contacts_total} fois sur {n_nuits_sp} nuits de présence, "
+                        f"soit en moyenne {contacts_moy} contacts/nuit.\n\n"
+                        f"Indicateur retenu : activité brute (contacts)\n\n"
+                        f"La méthode du séparateur n'a pas été appliquée ({motif_excl}). "
+                        f"La nuit la plus active est celle du {pic_date}."
+                    )
+                st.code(txt_raw, language=None)
+
+    st.markdown("---")
+    st.caption(
+        "Les textes ci-dessus sont générés automatiquement à partir des paramètres de l'analyse. "
+        "Ils doivent être adaptés au contexte de l'étude (type de projet, localisation, "
+        "espèces protégées concernées) avant intégration dans un rapport réglementaire."
+    )
