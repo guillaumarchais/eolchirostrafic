@@ -42,7 +42,7 @@ def load_demo_csv():
 # Configuration de la page
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Séparateur d'individus — Chiroptères",
+    page_title="Eol chiros trafic : convertisseur d'activité en estimations d'individus",
     page_icon="🦇",
     layout="wide",
     initial_sidebar_state="expanded",
