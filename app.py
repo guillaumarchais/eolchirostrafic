@@ -860,12 +860,13 @@ with tab4:
             )
 
         # Lignes de séparation (gaps > seuil)
+        # Plotly add_vline exige une string ISO ou un float Unix, pas un Timestamp
         if len(gaps_night) > 0:
             for i, g in enumerate(gaps_night):
                 if g > sep_min:
-                    t_mid = times_sorted[i] + timedelta(minutes=g / 2)
+                    x_iso = times_sorted[i + 1].isoformat()
                     fig_tl.add_vline(
-                        x=times_sorted[i + 1],
+                        x=x_iso,
                         line_dash="dash", line_color="#E24B4A", line_width=1,
                         annotation_text=f"+{g:.0f}′",
                         annotation_font_size=10,
