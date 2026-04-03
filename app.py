@@ -18,6 +18,22 @@ from datetime import timedelta
 import io
 import base64
 
+# 1. IMPORTATION DES TRADUCTIONS
+try:
+    from translations import LANGUAGES
+except ImportError:
+    st.error("Le fichier translations.py est manquant dans le répertoire.")
+    st.stop()
+
+# 2. CONFIGURATION DE LA PAGE
+st.set_page_config(page_title="Seebens-Hoyer Tool", layout="wide")
+
+# 3. SÉLECTION DE LA LANGUE DANS LA SIDEBAR
+# Placé tout en haut pour que 't' soit disponible pour tout le reste
+selected_lang = st.sidebar.selectbox("🌐 Langue / Language", ["Français", "Scientific English"])
+L = "FR" if selected_lang == "Français" else "EN"
+t = LANGUAGES[L]
+
 # ── Dépendance optionnelle : diptest ──────────────────────────────────────────
 try:
     import diptest as _diptest
