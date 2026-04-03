@@ -259,16 +259,14 @@ def parse_file(uploaded):
 
 
 def try_parse_datetime(df, col_dt=None, col_date=None, col_time=None):
-    """
-    Essaie de construire une colonne datetime à partir d'une ou deux colonnes.
-    Retourne (Series datetime, message d'erreur ou None).
-    """
     try:
         if col_dt:
-            series = pd.to_datetime(df[col_dt], dayfirst=True, infer_datetime_format=True)
+            # Correction : on retire l'argument supprimé
+            series = pd.to_datetime(df[col_dt], dayfirst=True)
         else:
             combined = df[col_date].astype(str) + " " + df[col_time].astype(str)
-            series = pd.to_datetime(combined, dayfirst=True, infer_datetime_format=True)
+            # Correction : on retire l'argument supprimé
+            series = pd.to_datetime(combined, dayfirst=True)
         if series.isna().all():
             return None, "Aucune date valide reconnue."
         return series, None
