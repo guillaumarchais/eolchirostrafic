@@ -18,58 +18,6 @@ from datetime import timedelta
 import io
 import base64
 
-# ── IMPORTATION DES TRADUCTIONS
-from translations import LANGUAGES
-
-def main():
-    # 1. Choix de la langue
-    selected_lang = st.sidebar.selectbox("🌐 Langue / Language", ["Français", "Scientific English"])
-    L = "FR" if selected_lang == "Français" else "EN"
-    t = LANGUAGES[L]
-
-    st.title(t["app_title"])
-
-    # 2. Sidebar - Import
-    st.sidebar.header(t["sidebar_params"])
-    st.sidebar.subheader(t["step_1"])
-    
-    # Bouton Démo
-    if st.sidebar.button(t["load_demo"]):
-        # Simulation chargement démo (votre logique base64 ici)
-        st.sidebar.success(t["demo_loaded"])
-        # ... suite du code ...
-
-    # 3. Sidebar - Mapping
-    st.sidebar.subheader(t["step_2"])
-    mode_dt = st.sidebar.radio(t["format_dt"], [t["single_col"], t["two_cols"]])
-    
-    # 4. Sidebar - Paramètres Algorithme
-    st.sidebar.subheader(t["step_3"])
-    gap = st.sidebar.slider(t["interval_label"], 1, 60, 5)
-
-    # 5. Sidebar - Filtres
-    st.sidebar.subheader(t["step_4"])
-    min_c = st.sidebar.number_input(t["min_contacts"], 1, 100, 5)
-
-    # --- LOGIQUE D'ANALYSE (Exemple de texte bilingue) ---
-    if st.sidebar.button(t["run_btn"]):
-        st.header(t["results_header"])
-        
-        # Exemple de génération de texte dynamique selon la langue
-        sp = "Pipistrellus nathusii"
-        n_indiv = 4
-        
-        if L == "FR":
-            report_text = f"Pour l'espèce {sp}, le modèle estime un pic de {n_indiv} individus simultanés."
-        else:
-            report_text = f"For {sp}, the model estimates a peak abundance of {n_indiv} simultaneous individuals."
-        
-        st.info(report_text)
-        st.caption(t["report_caption"])
-
-if __name__ == "__main__":
-    main()
-
 # ── Dépendance optionnelle : diptest ──────────────────────────────────────────
 try:
     import diptest as _diptest
