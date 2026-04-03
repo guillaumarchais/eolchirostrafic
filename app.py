@@ -1,5 +1,5 @@
 """
-Eol chiros trafic : convertisseur d'activité en estimations d'individus
+Séparateur d'individus — Acoustique chiroptères
 ================================================
 Application Streamlit pour estimer le nombre d'individus à partir de
 données acoustiques de suivi de chauves-souris (méthode du séparateur,
@@ -470,7 +470,7 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("🦇 Eol chiros trafic : convertisseur d'activité en estimations d'individus")
+st.title("🦇 Séparateur d'individus — Acoustique chiroptères")
 st.caption(
     f"Fichier : **{uploaded.name}** · "
     f"Séparateur : **{sep_min} min** · "
