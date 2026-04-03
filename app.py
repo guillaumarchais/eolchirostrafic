@@ -18,6 +18,22 @@ from datetime import timedelta
 import io
 import base64
 
+# ── IMPORTATION DES TRADUCTIONS
+from translations import LANGUAGES
+
+def main():
+    # 1. Sélection de la langue en haut de sidebar
+    selected_lang = st.sidebar.selectbox("🌐 Langue / Language", ["Français", "Scientific English"])
+    lang_code = "FR" if selected_lang == "Français" else "EN"
+    t = LANGUAGES[lang_code]
+
+    # 2. Utilisation immédiate
+    st.title(t["app_title"])
+    st.sidebar.header(t["sidebar_params"])
+    
+    # Exemple d'utilisation pour les sous-titres
+    st.sidebar.subheader(t["step_1"])
+
 # ── Dépendance optionnelle : diptest ──────────────────────────────────────────
 try:
     import diptest as _diptest
