@@ -58,7 +58,7 @@ def load_demo_csv():
 # Configuration de la page
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Séparateur d'individus — Chiroptères",
+    page_title=t["page_title"],
     page_icon="🦇",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -298,26 +298,26 @@ SPECIES_COLORS = px.colors.qualitative.Safe + px.colors.qualitative.Vivid
 # Sidebar
 # ─────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("🦇 Paramètres")
+    st.title(t["sidebar_title"])
 
     # ── Import fichier ──────────────────────────────────────────────────────
-    st.subheader("1 · Import des données")
+    st.subheader(t["sidebar_import"])
 
     # Bouton démo
-    if st.button("🦇 Charger une démo", use_container_width=True,
-                 help="Charge un jeu de données fictif (6 espèces, 210 nuits, France 2023)."):
+    if st.button(t["btn_load_demo"], use_container_width=True,
+                 help=t["btn_load_demo_help"]):
         st.session_state["demo_mode"] = True
     if st.session_state.get("demo_mode"):
-        st.info("✅ Données de démonstration chargées.")
-        if st.button("✖ Retirer la démo", use_container_width=True):
+        st.info(t["info_demo_loaded"])
+        if st.button(t["btn_remove_demo"], use_container_width=True):
             st.session_state["demo_mode"] = False
             st.rerun()
 
-    st.markdown("— ou —")
+    st.markdown(t["or_label"])
     uploaded = st.file_uploader(
-        "Importer votre tableur (CSV ou Excel)",
+        t["file_uploader_label"],
         type=["csv", "xlsx", "xls"],
-        help="Le fichier doit contenir au minimum une colonne date/heure et une colonne espèce.",
+        help=t["file_uploader_help"],
     )
 
     # Résolution : démo ou fichier importé
@@ -325,23 +325,14 @@ with st.sidebar:
         uploaded = load_demo_csv()
 
     if not uploaded:
-        st.info("Importez un fichier ou chargez la démo pour commencer.")
-        st.markdown("""
-**Format attendu :**
-| Date | Heure | Espèce |
-|------|-------|--------|
-| 15/08/2023 | 22:14 | Pipistrellus nathusii |
-| 15/08/2023 | 22:31 | Nyctalus noctula |
-| … | … | … |
-
-Les colonnes Date et Heure peuvent être fusionnées ou séparées.
-        """)
+        st.info(t["info_upload_prompt"])
+        st.markdown(t["format_expected"])
         st.stop()
 
     raw_df = parse_file(uploaded)
 
     # ── Mapping des colonnes ────────────────────────────────────────────────
-    st.subheader("2 · Mapping des colonnes")
+    st.subheader(t["sidebar_mapping"])
     cols = list(raw_df.columns)
 
     # Détection automatique : si une colonne contient "heure" ou "time" ET
@@ -359,15 +350,17 @@ Les colonnes Date et Heure peuvent être fusionnées ou séparées.
     )
 
     dt_mode = st.radio(
-        "Format date/heure",
-        ["Colonne unique (date + heure)", "Deux colonnes séparées"],
-        index=["Colonne unique (date + heure)", "Deux colonnes séparées"].index(_auto_mode),
+        t["datetime_format"],
+        [t["dt_mode_single"], t["dt_mode_double"]],
+        index=[t["dt_mode_single"], t["dt_mode_double"]].index(
+            t["dt_mode_single"] if _auto_mode == "Colonne unique (date + heure)" else t["dt_mode_double"]
+        ),
         horizontal=True,
-        help="Détection automatique — modifiez si nécessaire.",
+        help=t["dt_mode_help"],
     )
 
-    if dt_mode == "Colonne unique (date + heure)":
-        col_datetime = st.selectbox("Colonne date-heure", cols,
+    if dt_mode == t["dt_mode_single"]:
+        col_datetime = st.selectbox(t["col_datetime_label"], cols,
                                     index=next((i for i, c in enumerate(cols)
                                                 if any(k in c.lower() for k in
                                                        ["datetime", "date", "time", "heure"])), 0))
@@ -376,23 +369,19 @@ Les colonnes Date et Heure peuvent être fusionnées ou séparées.
         _test_dt = pd.to_datetime(raw_df[col_datetime].dropna().iloc[:10],
                                   dayfirst=True, errors="coerce")
         if (_test_dt.dt.hour == 0).all():
-            st.warning(
-                f"⚠️ La colonne **{col_datetime}** ne semble contenir que des dates sans heure. "
-                "Si vos données ont une colonne heure séparée, passez en mode "
-                "**Deux colonnes séparées** ci-dessus."
-            )
+            st.warning(t["warning_no_time"].format(col=col_datetime))
     else:
-        col_date_sep = st.selectbox("Colonne date", cols,
+        col_date_sep = st.selectbox(t["col_date_label"], cols,
                                     index=next((i for i, c in enumerate(cols)
                                                 if "date" in c.lower()), 0))
-        col_time_sep = st.selectbox("Colonne heure", cols,
+        col_time_sep = st.selectbox(t["col_time_label"], cols,
                                     index=next((i for i, c in enumerate(cols)
                                                 if any(k in c.lower() for k in
                                                        ["heure", "time"])), min(1, len(cols) - 1)))
         col_datetime = None
 
     col_species = st.selectbox(
-        "Colonne espèce",
+        t["col_species_label"],
         cols,
         index=next((i for i, c in enumerate(cols)
                     if any(k in c.lower() for k in
@@ -400,30 +389,30 @@ Les colonnes Date et Heure peuvent être fusionnées ou séparées.
     )
 
     # ── Séparateur ──────────────────────────────────────────────────────────
-    st.subheader("3 · Séparateur d'individus")
+    st.subheader(t["sidebar_separator"])
     sep_min = st.slider(
-        "Intervalle sans activité (minutes)",
+        t["slider_label"],
         min_value=5, max_value=60, value=20, step=1,
-        help="Deux contacts séparés de plus de N minutes sont attribués à des individus distincts.",
+        help=t["slider_help"],
     )
 
     # ── Filtres optionnels ──────────────────────────────────────────────────
-    st.subheader("4 · Filtres (optionnel)")
-    apply_period = st.checkbox("Filtrer par période migratoire")
+    st.subheader(t["sidebar_filters"])
+    apply_period = st.checkbox(t["filter_period_label"])
     date_range = None
     if apply_period:
         date_range = st.date_input(
-            "Période à analyser",
-            value=[], help="Laisser vide = toutes les dates."
+            t["date_range_label"],
+            value=[], help=t["date_range_help"]
         )
 
     min_contacts = st.number_input(
-        "Contacts minimum par nuit × espèce", min_value=1, value=1, step=1,
-        help="Exclure les nuits avec trop peu de contacts pour une espèce donnée.",
+        t["min_contacts_label"], min_value=1, value=1, step=1,
+        help=t["min_contacts_help"],
     )
 
     if not HAS_DIPTEST:
-        st.warning("⚠️ Package `diptest` non installé — test de Hartigan désactivé.\n\n`pip install diptest`")
+        st.warning(t["warning_diptest"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -435,7 +424,7 @@ else:
     dt_series, err = try_parse_datetime(raw_df, col_date=col_date_sep, col_time=col_time_sep)
 
 if err or dt_series is None:
-    st.error(f"Impossible de lire les dates/heures : {err}")
+    st.error(f"{t['error_datetime']}{err}")
     st.stop()
 
 df_work = pd.DataFrame({
@@ -461,7 +450,7 @@ if min_contacts > 1:
     df_work = df_work.merge(valid, on=["nuit_acoustique", "espece"])
 
 if df_work.empty:
-    st.warning("Aucune donnée après filtrage. Vérifiez les paramètres.")
+    st.warning(t["warning_no_data"])
     st.stop()
 
 # Espèces disponibles (pour filtres interactifs)
@@ -484,19 +473,19 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title("🦇 Séparateur d'individus — Acoustique chiroptères")
+st.title(t["app_title"])
 st.caption(
-    f"Fichier : **{uploaded.name}** · "
-    f"Séparateur : **{sep_min} min** · "
-    f"Méthode : Seebens-Hoyer et al. (2026)"
+    f"{t['caption_file']} : **{uploaded.name}** · "
+    f"{t['caption_separator']} : **{sep_min} min** · "
+    f"{t['caption_method']} : Seebens-Hoyer et al. (2026)"
 )
 
 # Métriques résumé
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Nuits analysées", f"{n_nights:,}")
-c2.metric("Contacts totaux", f"{total_contacts:,}")
-c3.metric("Individus estimés", f"{total_individus:,}")
-c4.metric("Espèces", f"{n_species}")
+c1.metric(t["metric_nights"], f"{n_nights:,}")
+c2.metric(t["metric_contacts"], f"{total_contacts:,}")
+c3.metric(t["metric_individuals"], f"{total_individus:,}")
+c4.metric(t["metric_species"], f"{n_species}")
 
 st.divider()
 
@@ -504,54 +493,54 @@ st.divider()
 # Onglets
 # ─────────────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📋 Données",
-    "📊 Distribution des intervalles",
-    "🦇 Estimation par nuit",
-    "🗓️ Vue phénologique",
-    "💾 Export",
-    "📝 Rapport",
+    t["tab_data"],
+    t["tab_distribution"],
+    t["tab_estimation"],
+    t["tab_phenology"],
+    t["tab_export"],
+    t["tab_report"],
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 — Aperçu des données
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
-    st.subheader("Aperçu des données importées")
+    st.subheader(t["tab1_title"])
     col_l, col_r = st.columns([2, 1])
 
     with col_l:
         st.dataframe(
             df_work.rename(columns={
-                "datetime": "Date-heure",
-                "espece": "Espèce",
-                "nuit_acoustique": "Nuit acoustique",
-            }).sort_values("Date-heure").head(500),
+                "datetime": t["col_datetime_display"],
+                "espece": t["col_species_display"],
+                "nuit_acoustique": t["col_night_display"],
+            }).sort_values(t["col_datetime_display"]).head(500),
             use_container_width=True,
             height=380,
         )
         if len(df_work) > 500:
-            st.caption(f"Affichage limité aux 500 premières lignes sur {len(df_work):,}.")
+            st.caption(t["display_limit"].format(n=len(df_work)))
 
     with col_r:
-        st.markdown("**Contacts par espèce**")
+        st.markdown(t["contacts_by_species"])
         sp_counts = (
             df_work.groupby("espece")
             .agg(contacts=("datetime", "count"),
                  nuits=("nuit_acoustique", "nunique"))
             .reset_index()
-            .rename(columns={"espece": "Espèce", "contacts": "Contacts", "nuits": "Nuits"})
+            .rename(columns={"espece": t["col_species_display"], "contacts": t["col_contacts"], "nuits": t["col_nights"]})
             .sort_values("Contacts", ascending=False)
         )
         st.dataframe(sp_counts, use_container_width=True, hide_index=True)
 
-        st.markdown("**Plage temporelle**")
+        st.markdown(t["time_range_label"])
         d0 = df_work["nuit_acoustique"].min()
         d1 = df_work["nuit_acoustique"].max()
-        st.info(f"{d0} → {d1}\n\n{n_nights} nuits acoustiques")
+        st.info(f"{d0} → {d1}\n\n{n_nights} {t['acoustic_nights']}")
 
     # Distribution des contacts par nuit
     st.markdown("---")
-    st.subheader("Contacts par nuit et par espèce")
+    st.subheader(t["tab1_subtitle"])
     nightly = (
         df_work.groupby(["nuit_acoustique", "espece"])
         .size()
@@ -560,7 +549,7 @@ with tab1:
     nightly["nuit_acoustique"] = nightly["nuit_acoustique"].astype(str)
 
     sp_filter1 = st.multiselect(
-        "Espèces à afficher", all_species, default=all_species[:min(5, len(all_species))],
+        t["species_to_display"], all_species, default=all_species[:min(5, len(all_species))],
         key="sp_filter1"
     )
     nightly_f = nightly[nightly["espece"].isin(sp_filter1)] if sp_filter1 else nightly
@@ -568,7 +557,7 @@ with tab1:
     fig_nightly = px.bar(
         nightly_f, x="nuit_acoustique", y="contacts", color="espece",
         color_discrete_map=species_color,
-        labels={"nuit_acoustique": "Nuit acoustique", "contacts": "Contacts", "espece": "Espèce"},
+        labels={"nuit_acoustique": t["col_night_display"], "contacts": t["col_contacts"], "espece": t["col_species_display"]},
         height=320,
     )
     fig_nightly.update_layout(
@@ -583,15 +572,15 @@ with tab1:
 # TAB 2 — Distribution des intervalles + test de Hartigan
 # ══════════════════════════════════════════════════════════════════════════════
 with tab2:
-    st.subheader("Distribution des intervalles entre contacts consécutifs")
+    st.subheader(t["tab2_title"])
 
     col_sp, col_range = st.columns([2, 2])
     with col_sp:
-        sp_selected = st.selectbox("Espèce", all_species, key="sp_dip")
+        sp_selected = st.selectbox(t["species_label"], all_species, key="sp_dip")
     with col_range:
         max_gap_display = st.slider(
-            "Intervalle max affiché (min)", 10, 120, 60, 5,
-            help="Pour zoomer sur la zone du séparateur."
+            t["max_gap_label"], 10, 120, 60, 5,
+            help=t["max_gap_help"]
         )
 
     # Intervalles intra-nuit poolés pour cette espèce (source pour Hartigan)
@@ -611,13 +600,13 @@ with tab2:
     pct_long = (n_long / n_total * 100) if n_total else 0
 
     col_dip1, col_dip2, col_dip3, col_dip4 = st.columns(4)
-    col_dip1.metric("Intervalles analysés", f"{n_total:,}")
-    col_dip2.metric(f"Courts (≤ {sep_min} min)", f"{n_short:,}",
-                    help="Intervalles intra-individu (même individu probable)")
-    col_dip3.metric(f"Longs (> {sep_min} min)", f"{n_long:,}",
-                    help="Intervalles inter-individus (nouvel individu probable)")
-    col_dip4.metric("% longs", f"{pct_long:.1f} %",
-                    delta="✓ > 5 %" if pct_long >= 5 else "✗ < 5 %",
+    col_dip1.metric(t["metric_gaps"], f"{n_total:,}")
+    col_dip2.metric(t["metric_short"].format(sep=sep_min), f"{n_short:,}",
+                    help=t["metric_short_help"])
+    col_dip3.metric(t["metric_long"].format(sep=sep_min), f"{n_long:,}",
+                    help=t["metric_long_help"])
+    col_dip4.metric(t["metric_pct_long"], f"{pct_long:.1f} %",
+                    delta=t["delta_pct_ok"] if pct_long >= 5 else t["delta_pct_nok"],
                     delta_color="normal" if pct_long >= 5 else "inverse")
 
     # ── Tests de bimodalité ──
@@ -625,42 +614,34 @@ with tab2:
     label, emoji, detail = verdict_bimodalite(res)
 
     if res["warn"]:
-        st.warning(f"⛔ **Test non applicable** : {res['warn']}")
+        st.warning(f"{t['warning_test_na']}{res['warn']}")
     else:
         col_h1, col_h2, col_h3 = st.columns(3)
-        col_h1.metric("BC (log)",
+        col_h1.metric(t["metric_bc"],
                       f"{res['bc']:.3f}" if res["bc"] is not None else "—",
-                      delta="✓ > 0.555" if res["bc_ok"] else "✗ ≤ 0.555",
+                      delta=t["delta_bc_ok"] if res["bc_ok"] else t["delta_bc_nok"],
                       delta_color="normal" if res["bc_ok"] else "inverse",
-                      help="Bimodality Coefficient sur log(intervalles). BC > 0.555 → bimodale.")
+                      help=t["metric_bc_help"])
         if res["dip_d"] is not None:
-            col_h2.metric("Dip D (log)", f"{res['dip_d']:.4f}")
-            col_h3.metric("p-value Dip", f"{res['dip_p']:.4f}",
-                          delta="✓ < 0.05" if res["dip_ok"] else "✗ ≥ 0.05",
+            col_h2.metric(t["metric_dip_d"], f"{res['dip_d']:.4f}")
+            col_h3.metric(t["metric_pvalue"], f"{res['dip_p']:.4f}",
+                          delta=t["delta_pvalue_ok"] if res["dip_ok"] else t["delta_pvalue_nok"],
                           delta_color="normal" if res["dip_ok"] else "inverse")
         else:
-            col_h2.metric("Dip D", "—", help="Installez `diptest` pour activer.")
-            col_h3.metric("p-value", "—")
+            col_h2.metric(t["metric_dip_d_na"], "—", help=t["metric_dip_d_na_help"])
+            col_h3.metric(t["metric_pvalue_na"], "—")
 
         if label.startswith("confirmée"):
-            st.success(f"{emoji} **Bimodalité {label}** — {detail} — "
-                       f"séparateur de **{sep_min} min** validé pour *{sp_selected}*.")
+            st.success(t["success_bimodal"].format(emoji=emoji, lbl=label, detail=detail, sep=sep_min, sp=sp_selected))
         elif label.startswith("probable"):
-            st.info(f"{emoji} **Bimodalité {label}** — {detail} — "
-                    f"résultats des deux tests divergents, interpréter avec prudence.")
+            st.info(t["info_bimodal_probable"].format(emoji=emoji, lbl=label, detail=detail))
         else:
-            st.warning(f"{emoji} **Bimodalité {label}** — {detail} — "
-                       f"préférer l'activité brute pour cette espèce / période.")
-        st.caption(
-            f"Tests calculés sur log₁₊ₓ(intervalles) plafonnés à {res['cap']} min "
-            f"(n={res['n_test']}). La transformation log compresse le pic court "
-            "et rend les deux modes comparables — recommandée pour les distributions "
-            "de temps inter-événements."
-        )
+            st.warning(t["warning_bimodal_not"].format(emoji=emoji, lbl=label, detail=detail))
+        st.caption(t["caption_test_method"].format(cap=res['cap'], n=res['n_test']))
 
     # ── Histogramme ──
     if len(gaps_filtered) == 0:
-        st.info("Pas d'intervalles à afficher pour cette espèce.")
+        st.info(t["hist_no_data"])
     else:
         fig_gap = go.Figure()
         gaps_same = gaps_filtered[gaps_filtered <= sep_min]
@@ -669,40 +650,39 @@ with tab2:
         if len(gaps_same) > 0:
             fig_gap.add_trace(go.Histogram(
                 x=gaps_same,
-                name=f"≤ {sep_min} min (même individu)",
+                name=t["hist_same"].format(sep=sep_min),
                 marker_color="#1D9E75", opacity=0.85,
                 xbins=dict(size=1),
             ))
         if len(gaps_new) > 0:
             fig_gap.add_trace(go.Histogram(
                 x=gaps_new,
-                name=f"> {sep_min} min (nouvel individu)",
+                name=t["hist_new"].format(sep=sep_min),
                 marker_color="#E24B4A", opacity=0.85,
                 xbins=dict(size=1),
             ))
 
         fig_gap.add_vline(
             x=sep_min, line_dash="dash", line_color="#888",
-            annotation_text=f"Seuil = {sep_min} min",
+            annotation_text=t["hist_threshold"].format(sep=sep_min),
             annotation_position="top right",
         )
         fig_gap.update_layout(
             barmode="overlay",
-            xaxis_title="Intervalle (minutes)",
-            yaxis_title="Nombre d'intervalles",
+            xaxis_title=t["xaxis_interval"],
+            yaxis_title=t["yaxis_count"],
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
             height=380, margin=dict(t=20, b=40),
         )
         st.plotly_chart(fig_gap, use_container_width=True)
-        st.caption(
-            f"Intervalles > {max_gap_display} min exclus de l'affichage "
-            f"({max(0, len(gaps_sp) - len(gaps_filtered))} intervalles masqués). "
-            "Le test de Hartigan porte sur la distribution complète (sans coupure)."
-        )
+        st.caption(t["caption_hist"].format(
+            max=max_gap_display,
+            n=max(0, len(gaps_sp) - len(gaps_filtered))
+        ))
 
     # ── Tableau récapitulatif toutes espèces ──
     st.markdown("---")
-    st.subheader("Résultats des tests de bimodalité par espèce")
+    st.subheader(t["tab2_subtitle"])
     bm_rows = []
     for sp in all_species:
         g   = get_gaps_for_species(gap_df, sp)
@@ -711,38 +691,34 @@ with tab2:
         n_sp  = len(g)
         nl_sp = int(np.sum(g > sep_min)) if n_sp else 0
         bm_rows.append({
-            "Espèce":           sp,
-            "N gaps (brut)":   n_sp,
-            "N gaps (test)":   res["n_test"],
-            "% longs":         f"{(nl_sp/n_sp*100):.1f} %" if n_sp else "—",
-            "BC (log)":        f"{res['bc']:.3f}" if res["bc"] is not None else "—",
-            "Dip D":           f"{res['dip_d']:.4f}" if res["dip_d"] is not None else "—",
-            "p-value":         f"{res['dip_p']:.4f}" if res["dip_p"] is not None else "—",
-            "Bimodalité":      f"{emj} {lbl}",
-            "Séparateur valide": ("Oui" if "confirmée" in lbl else
-                                  "Probable" if "probable" in lbl else
-                                  "Non" if "non confirmée" in lbl else "N/A"),
+            t["col_sp"]:           sp,
+            t["col_n_gaps_raw"]:   n_sp,
+            t["col_n_gaps_test"]:  res["n_test"],
+            t["col_pct_long"]:     f"{(nl_sp/n_sp*100):.1f} %" if n_sp else "—",
+            t["col_bc"]:           f"{res['bc']:.3f}" if res["bc"] is not None else "—",
+            t["col_dip_d"]:        f"{res['dip_d']:.4f}" if res["dip_d"] is not None else "—",
+            t["col_pvalue"]:       f"{res['dip_p']:.4f}" if res["dip_p"] is not None else "—",
+            t["col_bimodality"]:   f"{emj} {lbl}",
+            t["col_sep_valid"]:    (t["val_yes"] if "confirmée" in lbl else
+                                    t["val_probable"] if "probable" in lbl else
+                                    t["val_no"] if "non confirmée" in lbl else t["val_na"]),
         })
     bm_table = pd.DataFrame(bm_rows)
     st.dataframe(bm_table, use_container_width=True, hide_index=True)
-    st.caption(
-        "BC = Bimodality Coefficient sur log₁₊ₓ(intervalles plafonnés). "
-        "BC > 0.555 → bimodale. Dip test calculé sur la même distribution log. "
-        "Plafond = max(4 × séparateur, 90 min)."
-    )
+    st.caption(t["caption_bc_explanation"])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — Estimation des individus par nuit
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
-    st.subheader("Individus estimés par nuit et par espèce")
+    st.subheader(t["tab3_title"])
 
     col_l3, col_r3 = st.columns([3, 2])
 
     with col_l3:
         sp_filter3 = st.multiselect(
-            "Espèces", all_species,
+            t["species_label"], all_species,
             default=all_species[:min(5, len(all_species))],
             key="sp_filter3"
         )
@@ -754,9 +730,9 @@ with tab3:
     # Graphique individus estimés par nuit
     fig_ind = px.bar(
         summary_f,
-        x="Nuit acoustique", y="Individus estimés", color="Espèce",
+        x=t["col_night_display"], y=t["col_ind_display"], color=t["col_species_display"],
         color_discrete_map=species_color,
-        labels={"Nuit acoustique": "Nuit acoustique"},
+        labels={t["col_night_display"]: t["col_night_display"]},
         height=340,
     )
     fig_ind.update_layout(
@@ -769,17 +745,17 @@ with tab3:
 
     # Ratio individus / contacts
     st.markdown("---")
-    st.subheader("Ratio individus / contacts")
+    st.subheader(t["tab3_subtitle_ratio"])
     ratio_df = summary_f.copy()
-    ratio_df["Ratio ind./contacts"] = (
-        ratio_df["Individus estimés"] / ratio_df["Contacts"]
+    ratio_df[t["col_ratio"]] = (
+        ratio_df[t["col_ind_display"]] / ratio_df[t["col_contacts"]]
     ).round(2)
 
     fig_ratio = px.scatter(
         ratio_df,
-        x="Contacts", y="Individus estimés", color="Espèce",
+        x=t["col_contacts"], y=t["col_ind_display"], color=t["col_species_display"],
         color_discrete_map=species_color,
-        hover_data=["Nuit acoustique", "Ratio ind./contacts"],
+        hover_data=[t["col_night_display"], t["col_ratio"]],
         height=320,
     )
     # Droite de régression manuelle (numpy, sans statsmodels)
@@ -793,7 +769,7 @@ with tab3:
             x=x_line, y=y_line,
             mode="lines",
             line=dict(color="#888", width=1.5, dash="dash"),
-            name=f"Régression (pente={coeffs[0]:.2f})",
+            name=t["regression_label"].format(slope=coeffs[0]),
             showlegend=True,
         ))
     fig_ratio.update_layout(margin=dict(t=10, b=40))
@@ -801,9 +777,9 @@ with tab3:
 
     # Tableau de synthèse
     st.markdown("---")
-    st.subheader("Tableau de synthèse")
+    st.subheader(t["tab3_subtitle_table"])
     st.dataframe(
-        summary_f.sort_values(["Nuit acoustique", "Espèce"]),
+        summary_f.sort_values([t["col_night_display"], t["col_species_display"]]),
         use_container_width=True,
         hide_index=True,
         height=320,
@@ -811,20 +787,20 @@ with tab3:
 
     # Totaux par espèce
     totaux = (
-        summary_df.groupby("Espèce")
+        summary_df.groupby(t["col_species_display"])
         .agg(
-            Contacts_total=("Contacts", "sum"),
-            Individus_total=("Individus estimés", "sum"),
-            Nuits=("Nuit acoustique", "nunique"),
+            Contacts_total=(t["col_contacts"], "sum"),
+            Individus_total=(t["col_ind_display"], "sum"),
+            Nuits=(t["col_night_display"], "nunique"),
         )
         .reset_index()
         .rename(columns={
-            "Contacts_total": "Contacts (total)",
-            "Individus_total": "Individus estimés (total)",
+            "Contacts_total": t["col_contacts_total"],
+            "Individus_total": t["col_ind_total"],
         })
     )
-    totaux["Moy. ind./nuit"] = (totaux["Individus estimés (total)"] / totaux["Nuits"]).round(1)
-    st.markdown("**Totaux par espèce (toutes nuits)**")
+    totaux[t["col_avg_ind"]] = (totaux[t["col_ind_total"]] / totaux[t["col_nights"]]).round(1)
+    st.markdown(t["totaux_by_species"])
     st.dataframe(totaux, use_container_width=True, hide_index=True)
 
 
@@ -832,18 +808,18 @@ with tab3:
 # TAB 4 — Vue phénologique (détail d'une nuit)
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    st.subheader("Vue phénologique — détail d'une nuit")
+    st.subheader(t["tab4_title"])
 
     col_n, col_s = st.columns(2)
     with col_n:
         night_list = sorted(df_work["nuit_acoustique"].unique(), reverse=True)
         selected_night = st.selectbox(
-            "Nuit acoustique", night_list,
+            t["col_night_display"], night_list,
             format_func=str, key="night_select"
         )
     with col_s:
         sp_night = st.selectbox(
-            "Espèce", all_species, key="sp_night"
+            t["species_label"], all_species, key="sp_night"
         )
 
     df_night_sp = df_work[
@@ -852,7 +828,7 @@ with tab4:
     ].copy()
 
     if df_night_sp.empty:
-        st.info(f"Aucun contact pour *{sp_night}* la nuit du {selected_night}.")
+        st.info(t["no_contact_info"].format(sp=sp_night, night=selected_night))
     else:
         times_sorted = sorted(df_night_sp["datetime"])
         individus = assign_individuals(times_sorted, sep_min)
@@ -864,9 +840,9 @@ with tab4:
         gaps_night = compute_gaps(times_sorted)
 
         c1n, c2n, c3n = st.columns(3)
-        c1n.metric("Contacts", n_cont_night)
-        c2n.metric("Individus estimés", n_ind_night)
-        c3n.metric("Intervalle médian", f"{np.median(gaps_night):.0f} min" if len(gaps_night) else "—")
+        c1n.metric(t["col_contacts"], n_cont_night)
+        c2n.metric(t["metric_individuals"], n_ind_night)
+        c3n.metric(t["metric_median_gap"], f"{np.median(gaps_night):.0f} min" if len(gaps_night) else "—")
 
         # Graphique timeline
         max_ind = max(individus)
@@ -882,10 +858,10 @@ with tab4:
                 y=[0, 1],
                 mode="lines",
                 line=dict(color=col, width=6),
-                name=f"Individu {ind}",
+                name=t["individual_label"].format(n=ind),
                 legendgroup=f"ind{ind}",
                 showlegend=(idx == list(individus).index(ind)),
-                hovertemplate=f"<b>Individu {ind}</b><br>%{{x|%H:%M}}<extra></extra>",
+                hovertemplate=t["hover_individual"].format(n=ind),
             ))
 
         # Zones d'appartenance (fond coloré léger)
@@ -927,7 +903,7 @@ with tab4:
                     )
 
         fig_tl.update_layout(
-            xaxis_title="Heure",
+            xaxis_title=t["xaxis_time"],
             yaxis=dict(visible=False, range=[-0.2, 1.5]),
             height=220,
             legend=dict(orientation="h", yanchor="bottom", y=1.05, font_size=11),
@@ -935,30 +911,27 @@ with tab4:
             hovermode="x unified",
         )
         st.plotly_chart(fig_tl, use_container_width=True)
-        st.caption(
-            f"Chaque barre verticale = 1 contact. Couleur = individu estimé. "
-            f"Ligne rouge pointillée = intervalle > {sep_min} min → séparation d'individus."
-        )
+        st.caption(t["caption_timeline"].format(sep=sep_min))
 
         # Tableau des intervalles pour cette nuit
         if len(gaps_night) > 0:
-            with st.expander("Détail des intervalles de cette nuit"):
+            with st.expander(t["expander_intervals"]):
                 rows_night = []
                 for i, g in enumerate(gaps_night):
                     rows_night.append({
-                        "De": times_sorted[i].strftime("%H:%M"),
-                        "À": times_sorted[i + 1].strftime("%H:%M"),
-                        "Intervalle (min)": round(g, 1),
-                        "Statut": f"{'🔴 Nouvel individu' if g > sep_min else '🟢 Même individu'}",
+                        t["col_from"]: times_sorted[i].strftime("%H:%M"),
+                        t["col_to"]: times_sorted[i + 1].strftime("%H:%M"),
+                        t["col_interval_min"]: round(g, 1),
+                        t["col_status"]: t["status_new"] if g > sep_min else t["status_same"],
                     })
                 st.dataframe(pd.DataFrame(rows_night), use_container_width=True,
                              hide_index=True)
 
     # Phénologie saisonnière
     st.markdown("---")
-    st.subheader("Phénologie saisonnière — individus estimés")
+    st.subheader(t["tab4_subtitle_pheno"])
     sp_pheno = st.multiselect(
-        "Espèces", all_species,
+        t["species_label"], all_species,
         default=all_species[:min(4, len(all_species))],
         key="sp_pheno"
     )
@@ -967,10 +940,10 @@ with tab4:
 
     fig_pheno = px.line(
         summary_pheno,
-        x="Nuit acoustique", y="Individus estimés",
-        color="Espèce", color_discrete_map=species_color,
+        x=t["col_night_display"], y=t["col_ind_display"],
+        color=t["col_species_display"], color_discrete_map=species_color,
         markers=True, height=340,
-        labels={"Nuit acoustique": "Nuit acoustique"},
+        labels={t["col_night_display"]: t["col_night_display"]},
     )
     fig_pheno.update_layout(
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
@@ -984,17 +957,17 @@ with tab4:
 # TAB 5 — Export
 # ══════════════════════════════════════════════════════════════════════════════
 with tab5:
-    st.subheader("Export des résultats")
+    st.subheader(t["tab5_title"])
 
     # ── Tableau complet nuit × espèce ──
-    st.markdown("**1 · Tableau individus estimés (nuit × espèce)**")
+    st.markdown(t["export_section1"])
     st.dataframe(summary_df, use_container_width=True, hide_index=True, height=280)
 
     buf1 = io.BytesIO()
     with pd.ExcelWriter(buf1, engine="openpyxl") as w:
         summary_df.to_excel(w, sheet_name="Individus_nuit_espece", index=False)
     st.download_button(
-        "⬇️ Télécharger (Excel)",
+        t["download_excel"],
         buf1.getvalue(),
         file_name="individus_nuit_espece.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1003,19 +976,19 @@ with tab5:
 
     # ── Tableau des intervalles ──
     st.markdown("---")
-    st.markdown("**2 · Tableau des intervalles (tous contacts)**")
+    st.markdown(t["export_section2"])
     gap_export = gap_df.copy()
     gap_export["nuit_acoustique"] = gap_export["nuit_acoustique"].astype(str)
     gap_export["t_debut"] = gap_export["t_debut"].dt.strftime("%Y-%m-%d %H:%M")
     gap_export["t_fin"] = gap_export["t_fin"].dt.strftime("%Y-%m-%d %H:%M")
     gap_export["intervalle_min"] = gap_export["intervalle_min"].round(1)
     gap_export = gap_export.rename(columns={
-        "nuit_acoustique": "Nuit acoustique",
-        "espece": "Espèce",
-        "intervalle_min": "Intervalle (min)",
-        "nouveau_individu": "Nouvel individu",
-        "t_debut": "Contact précédent",
-        "t_fin": "Contact suivant",
+        "nuit_acoustique": t["col_night_display"],
+        "espece": t["col_species_display"],
+        "intervalle_min": t["col_interval_min"],
+        "nouveau_individu": t["col_new_ind_exp"],
+        "t_debut": t["col_prev_contact"],
+        "t_fin": t["col_next_contact"],
     })
     st.dataframe(gap_export, use_container_width=True, hide_index=True, height=280)
 
@@ -1023,7 +996,7 @@ with tab5:
     with pd.ExcelWriter(buf2, engine="openpyxl") as w:
         gap_export.to_excel(w, sheet_name="Intervalles", index=False)
     st.download_button(
-        "⬇️ Télécharger (Excel)",
+        t["download_excel"],
         buf2.getvalue(),
         file_name="intervalles_contacts.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1032,7 +1005,7 @@ with tab5:
 
     # ── Tests de bimodalité (export) ──
     st.markdown("---")
-    st.markdown("**3 · Résultats tests de bimodalité (BC + Dip)**")
+    st.markdown(t["export_section3"])
     bm_rows_exp = []
     for sp in all_species:
         g   = get_gaps_for_species(gap_df, sp)
@@ -1041,19 +1014,19 @@ with tab5:
         n_sp  = len(g)
         nl_sp = int(np.sum(g > sep_min)) if n_sp else 0
         bm_rows_exp.append({
-            "Espèce":             sp,
-            "N gaps brut":        n_sp,
-            "N gaps (test)":      res["n_test"],
-            "Plafond (min)":      res["cap"],
-            "% longs":            round(nl_sp/n_sp*100, 1) if n_sp else None,
-            "BC (log)":           round(res["bc"], 4) if res["bc"] is not None else None,
-            "BC > 0.555":         res["bc_ok"],
-            "Dip D":              round(res["dip_d"], 6) if res["dip_d"] is not None else None,
-            "p-value Dip":        round(res["dip_p"], 6) if res["dip_p"] is not None else None,
-            "Bimodalité":         f"{emj} {lbl}",
-            "Séparateur valide":  ("Oui" if "confirmée" in lbl else
-                                   "Probable" if "probable" in lbl else
-                                   "Non" if "non confirmée" in lbl else "N/A"),
+            t["col_sp"]:              sp,
+            t["col_n_gaps_raw_exp"]:  n_sp,
+            t["col_n_gaps_test"]:     res["n_test"],
+            t["col_cap"]:             res["cap"],
+            t["col_pct_long"]:        round(nl_sp/n_sp*100, 1) if n_sp else None,
+            t["col_bc"]:              round(res["bc"], 4) if res["bc"] is not None else None,
+            t["col_bc_ok"]:           res["bc_ok"],
+            t["col_dip_d"]:           round(res["dip_d"], 6) if res["dip_d"] is not None else None,
+            t["col_pvalue_dip"]:      round(res["dip_p"], 6) if res["dip_p"] is not None else None,
+            t["col_bimodality"]:      f"{emj} {lbl}",
+            t["col_sep_valid"]:       (t["val_yes"] if "confirmée" in lbl else
+                                       t["val_probable"] if "probable" in lbl else
+                                       t["val_no"] if "non confirmée" in lbl else t["val_na"]),
         })
     dip_tbl = pd.DataFrame(bm_rows_exp)
     st.dataframe(dip_tbl, use_container_width=True, hide_index=True)
@@ -1062,7 +1035,7 @@ with tab5:
     with pd.ExcelWriter(buf3, engine="openpyxl") as w:
         dip_tbl.to_excel(w, sheet_name="Tests_bimodalite", index=False)
     st.download_button(
-        "⬇️ Télécharger (Excel)",
+        t["download_excel"],
         buf3.getvalue(),
         file_name="tests_bimodalite.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1071,7 +1044,7 @@ with tab5:
 
     # ── Export complet multi-feuilles ──
     st.markdown("---")
-    st.markdown("**4 · Export complet (toutes tables, un seul fichier)**")
+    st.markdown(t["export_section4"])
     buf4 = io.BytesIO()
     with pd.ExcelWriter(buf4, engine="openpyxl") as w:
         summary_df.to_excel(w, sheet_name="Individus_nuit_espece", index=False)
@@ -1081,7 +1054,7 @@ with tab5:
         totaux.to_excel(w, sheet_name="Totaux_par_espece", index=False)
 
     st.download_button(
-        "⬇️ Télécharger le rapport complet (Excel)",
+        t["download_full"],
         buf4.getvalue(),
         file_name=f"rapport_separateur_{uploaded.name.split('.')[0]}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1090,18 +1063,18 @@ with tab5:
 
     # ── Paramètres de l'analyse (traçabilité) ──
     st.markdown("---")
-    st.markdown("**5 · Paramètres de l'analyse (traçabilité)**")
+    st.markdown(t["export_section5"])
     params = {
-        "Fichier source": uploaded.name,
-        "Séparateur (min)": sep_min,
-        "Colonne date-heure": col_datetime or f"{col_date_sep} + {col_time_sep}",
-        "Colonne espèce": col_species,
-        "Nuits analysées": n_nights,
-        "Espèces": ", ".join(all_species),
-        "Total contacts": total_contacts,
-        "Total individus estimés": int(total_individus),
-        "diptest disponible": str(HAS_DIPTEST),
-        "Référence méthode": "Seebens-Hoyer et al. (2026), Biological Conservation 316, 111741",
+        t["param_source"]: uploaded.name,
+        t["param_separator"]: sep_min,
+        t["param_col_dt"]: col_datetime or f"{col_date_sep} + {col_time_sep}",
+        t["param_col_sp"]: col_species,
+        t["param_nights"]: n_nights,
+        t["param_species"]: ", ".join(all_species),
+        t["param_total_contacts"]: total_contacts,
+        t["param_total_ind"]: int(total_individus),
+        t["param_diptest"]: str(HAS_DIPTEST),
+        t["param_reference"]: "Seebens-Hoyer et al. (2026), Biological Conservation 316, 111741",
     }
     st.json(params)
 
@@ -1110,12 +1083,8 @@ with tab5:
 # TAB 6 — Rapport
 # ══════════════════════════════════════════════════════════════════════════════
 with tab6:
-    st.subheader("Rapport — Texte de conclusion par espèce")
-    st.markdown(
-        "Ce texte synthétique est prêt à être intégré dans un rapport d'étude d'impact. "
-        "Il est généré automatiquement à partir des résultats de l'analyse avec le séparateur "
-        f"de **{sep_min} min** et la méthode Seebens-Hoyer et al. (2026)."
-    )
+    st.subheader(t["tab6_title"])
+    st.markdown(t["report_intro"].format(sep=sep_min))
 
     # Calculs préliminaires pour le rapport
     periode_debut = str(df_work["nuit_acoustique"].min())
@@ -1152,102 +1121,68 @@ with tab6:
             if valide:
                 # ── Texte complet avec individus estimés ──────────────────
                 bc_str   = f"{res['bc']:.3f}" if res["bc"] is not None else "N/A"
-                txt = f"""**{sp}**
-
-Au cours de la période de suivi ({periode_debut} au {periode_fin}, {n_nuits_total} nuits), l'espèce *{sp}* a été contactée {n_contacts_total} fois sur {n_nuits_sp} nuits de présence, soit en moyenne {contacts_moy} contacts/nuit.
-
-**Estimation du nombre d'individus (méthode du séparateur, {sep_min} min)**
-
-Le test de bimodalité des intervalles entre contacts (Bimodality Coefficient, BC = {bc_str}) confirme la structure bimodale de la distribution : un pic d'intervalles courts (< {sep_min} min, intra-individu) et un second pic d'intervalles longs (> {sep_min} min, inter-individus). La méthode du séparateur est donc applicable pour cette espèce.
-
-Un total de **{n_ind_total} occurrences d'individus distincts** a été estimé sur l'ensemble de la période, soit une moyenne de **{ind_moy} occurrence(s) d'individu(s) par nuit de présence**. La nuit la plus active est celle du {pic_date} avec {pic_ind} individu(s) estimé(s).
-
-⚠️ *Note : un même individu peut être détecté à plusieurs reprises au cours de nuits successives. Le total ci-dessus représente donc le cumul des occurrences nocturnes d'individus distincts au sein de chaque nuit, et non nécessairement le nombre d'individus uniques sur l'ensemble de la période de suivi.*
-
-Ces résultats constituent une estimation minimale conservative (Seebens-Hoyer et al., 2026). Ils permettent d'évaluer l'exposition potentielle de l'espèce au risque de collision avec les éoliennes et de dimensionner les mesures de bridage à mettre en œuvre.
-
-*Référence : Seebens-Hoyer et al. (2026). Estimating the traffic rates of bats migrating across the North and Baltic Seas to develop efficient mitigation measures at offshore wind energy facilities. Biological Conservation, 316, 111741.*"""
+                txt = t["report_valide"].format(
+                    sp=sp, periode_debut=periode_debut, periode_fin=periode_fin,
+                    n_nuits_total=n_nuits_total, n_contacts_total=n_contacts_total,
+                    n_nuits_sp=n_nuits_sp, contacts_moy=contacts_moy, sep_min=sep_min,
+                    bc_str=bc_str, n_ind_total=n_ind_total, ind_moy=ind_moy,
+                    pic_date=pic_date, pic_ind=pic_ind
+                )
 
             else:
                 # ── Texte simplifié : activité brute uniquement ────────────
                 motif_excl = ""
                 if res["warn"] and "Effectif" in res["warn"]:
-                    motif_excl = (f"en raison d'un effectif insuffisant "
-                                  f"({res['n_test']} intervalles disponibles, "
-                                  f"minimum 30 requis pour le test de bimodalité)")
+                    motif_excl = t["motif_insufficient"].format(n=res['n_test'])
                 elif res["warn"] and "Mode long" in res["warn"]:
-                    motif_excl = (f"en raison de l'absence de mode long "
-                                  f"dans la distribution des intervalles "
-                                  f"({round(float(np.mean(g > sep_min)*100) if len(g) else 0, 1)} % "
-                                  f"des intervalles dépassent {sep_min} min)")
+                    motif_excl = t["motif_no_long_mode"].format(
+                        pct=round(float(np.mean(g > sep_min)*100) if len(g) else 0, 1),
+                        sep=sep_min
+                    )
                 elif "non confirmée" in lbl:
                     bc_str_nc  = f"{res['bc']:.3f}" if res["bc"] is not None else "N/A"
-                    motif_excl = (f"la distribution des intervalles ne présente pas "
-                                  f"de structure bimodale significative "
-                                  f"(BC = {bc_str_nc})")
+                    motif_excl = t["motif_not_confirmed"].format(bc=bc_str_nc)
                 else:
-                    motif_excl = "les conditions d'application du test de bimodalité ne sont pas réunies"
+                    motif_excl = t["motif_default"]
 
-                txt = f"""**{sp}**
-
-Au cours de la période de suivi ({periode_debut} au {periode_fin}, {n_nuits_total} nuits), l'espèce *{sp}* a été contactée {n_contacts_total} fois sur {n_nuits_sp} nuits de présence, soit en moyenne {contacts_moy} contacts/nuit.
-
-**Indicateur retenu : activité brute (contacts)**
-
-La méthode du séparateur n'a pas été appliquée pour cette espèce, {motif_excl}. L'activité brute est conservée comme indicateur de fréquentation du site.
-
-Par défaut, on peut néanmoins retenir qu'au moins **un individu distinct** a été détecté pour chaque nuit de présence, quel que soit le nombre de contacts enregistrés au cours de cette même nuit. Cela représente un minimum de **{n_nuits_sp} occurrence(s) d'individu(s)** sur l'ensemble de la période.
-
-La nuit la plus active est celle du {pic_date}. Ces données d'activité permettent de qualifier la présence de l'espèce sur le site d'étude, mais ne permettent pas d'estimer le nombre d'individus distincts ayant transité. En l'absence de conversion en individus, l'appréciation du risque de collision doit s'appuyer sur les indices d'activité brute et les données bibliographiques disponibles pour l'espèce."""
+                txt = t["report_nonvalide"].format(
+                    sp=sp, periode_debut=periode_debut, periode_fin=periode_fin,
+                    n_nuits_total=n_nuits_total, n_contacts_total=n_contacts_total,
+                    n_nuits_sp=n_nuits_sp, contacts_moy=contacts_moy,
+                    motif_excl=motif_excl, pic_date=pic_date
+                )
 
             # Affichage du texte
             st.markdown(txt)
 
             # Bouton copier (via st.code pour faciliter la copie)
-            with st.popover("📋 Copier le texte brut"):
+            with st.popover(t["copy_button"]):
                 # Version sans markdown pour insertion dans un rapport Word
                 if valide:
-                    txt_raw = (
-                        f"{sp}\n\n"
-                        f"Au cours de la période de suivi ({periode_debut} au {periode_fin}, "
-                        f"{n_nuits_total} nuits), l'espèce {sp} a été contactée "
-                        f"{n_contacts_total} fois sur {n_nuits_sp} nuits de présence, "
-                        f"soit en moyenne {contacts_moy} contacts/nuit.\n\n"
-                        f"Estimation du nombre d'individus (méthode du séparateur, {sep_min} min)\n\n"
-                        f"Le test de bimodalité (BC = {bc_str}) "
-                        f"confirme l'applicabilité de la méthode du séparateur pour cette espèce. "
-                        f"Un total de {n_ind_total} individus distincts a été estimé sur l'ensemble de la période, "
-                        f"soit une moyenne de {ind_moy} individu(s) par nuit de présence. "
-                        f"La nuit la plus active est celle du {pic_date} avec {pic_ind} individu(s) estimé(s). "
-                        f"Ces résultats constituent une estimation minimale conservative (Seebens-Hoyer et al., 2026).\n\n"
-                        f"Référence : Seebens-Hoyer et al. (2026), Biological Conservation, 316, 111741."
+                    txt_raw = t["report_raw_valide"].format(
+                        sp=sp, periode_debut=periode_debut, periode_fin=periode_fin,
+                        n_nuits_total=n_nuits_total, n_contacts_total=n_contacts_total,
+                        n_nuits_sp=n_nuits_sp, contacts_moy=contacts_moy, sep_min=sep_min,
+                        bc_str=bc_str, n_ind_total=n_ind_total, ind_moy=ind_moy,
+                        pic_date=pic_date, pic_ind=pic_ind
                     )
                 else:
-                    txt_raw = (
-                        f"{sp}\n\n"
-                        f"Au cours de la période de suivi ({periode_debut} au {periode_fin}, "
-                        f"{n_nuits_total} nuits), l'espèce {sp} a été contactée "
-                        f"{n_contacts_total} fois sur {n_nuits_sp} nuits de présence, "
-                        f"soit en moyenne {contacts_moy} contacts/nuit.\n\n"
-                        f"Indicateur retenu : activité brute (contacts)\n\n"
-                        f"La méthode du séparateur n'a pas été appliquée ({motif_excl}). "
-                        f"La nuit la plus active est celle du {pic_date}."
+                    txt_raw = t["report_raw_nonvalide"].format(
+                        sp=sp, periode_debut=periode_debut, periode_fin=periode_fin,
+                        n_nuits_total=n_nuits_total, n_contacts_total=n_contacts_total,
+                        n_nuits_sp=n_nuits_sp, contacts_moy=contacts_moy,
+                        motif_excl=motif_excl, pic_date=pic_date
                     )
                 st.code(txt_raw, language=None)
 
     st.markdown("---")
-    st.caption(
-        "Les textes ci-dessus sont générés automatiquement à partir des paramètres de l'analyse. "
-        "Ils doivent être adaptés au contexte de l'étude (type de projet, localisation, "
-        "espèces protégées concernées) avant intégration dans un rapport réglementaire."
-    )
+    st.caption(t["caption_report"])
 
 # ── Crédit auteur ─────────────────────────────────────────────────────────────
 st.markdown(
     "<div style='text-align: right; color: var(--text-color, #888); "
     "font-size: 11px; margin-top: 2rem; padding-right: 0.5rem;'>"
-    "Application conçue par Guillaume Marchais"
+    + t["author_credit"] +
     "</div>",
     unsafe_allow_html=True,
 )
-
