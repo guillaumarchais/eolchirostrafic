@@ -462,12 +462,19 @@ species_color = {sp: SPECIES_COLORS[i % len(SPECIES_COLORS)]
 # Calculs principaux
 # ─────────────────────────────────────────────────────────────────────────────
 summary_df = build_summary(df_work, sep_min)
+# Rename summary_df columns to current language immediately
+summary_df = summary_df.rename(columns={
+    "Nuit acoustique": t["col_night_display"],
+    "Espèce":          t["col_species_display"],
+    "Contacts":        t["col_contacts"],
+    "Individus estimés": t["col_ind_display"],
+})
 gap_df = build_gap_df(df_work, sep_min)
 # gaps calculés via get_gaps_for_species(gap_df, sp) — source unique : gap_df
 
 n_nights = df_work["nuit_acoustique"].nunique()
 total_contacts = len(df_work)
-total_individus = summary_df["Individus estimés"].sum()
+total_individus = summary_df[t["col_ind_display"]].sum()
 n_species = len(all_species)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -529,7 +536,7 @@ with tab1:
                  nuits=("nuit_acoustique", "nunique"))
             .reset_index()
             .rename(columns={"espece": t["col_species_display"], "contacts": t["col_contacts"], "nuits": t["col_nights"]})
-            .sort_values("Contacts", ascending=False)
+            .sort_values(t["col_contacts"], ascending=False)
         )
         st.dataframe(sp_counts, use_container_width=True, hide_index=True)
 
@@ -723,9 +730,9 @@ with tab3:
             key="sp_filter3"
         )
 
-    summary_f = summary_df[summary_df["Espèce"].isin(sp_filter3)] if sp_filter3 else summary_df
+    summary_f = summary_df[summary_df[t["col_species_display"]].isin(sp_filter3)] if sp_filter3 else summary_df
     summary_f = summary_f.copy()
-    summary_f["Nuit acoustique"] = summary_f["Nuit acoustique"].astype(str)
+    summary_f[t["col_night_display"]] = summary_f[t["col_night_display"]].astype(str)
 
     # Graphique individus estimés par nuit
     fig_ind = px.bar(
@@ -759,8 +766,8 @@ with tab3:
         height=320,
     )
     # Droite de régression manuelle (numpy, sans statsmodels)
-    x_all = ratio_df["Contacts"].values.astype(float)
-    y_all = ratio_df["Individus estimés"].values.astype(float)
+    x_all = ratio_df[t["col_contacts"]].values.astype(float)
+    y_all = ratio_df[t["col_ind_display"]].values.astype(float)
     if len(x_all) >= 2:
         coeffs = np.polyfit(x_all, y_all, 1)
         x_line = np.linspace(x_all.min(), x_all.max(), 100)
@@ -935,8 +942,8 @@ with tab4:
         default=all_species[:min(4, len(all_species))],
         key="sp_pheno"
     )
-    summary_pheno = summary_df[summary_df["Espèce"].isin(sp_pheno)].copy() if sp_pheno else summary_df.copy()
-    summary_pheno["Nuit acoustique"] = summary_pheno["Nuit acoustique"].astype(str)
+    summary_pheno = summary_df[summary_df[t["col_species_display"]].isin(sp_pheno)].copy() if sp_pheno else summary_df.copy()
+    summary_pheno[t["col_night_display"]] = summary_pheno[t["col_night_display"]].astype(str)
 
     fig_pheno = px.line(
         summary_pheno,
@@ -1097,21 +1104,21 @@ with tab6:
         lbl, emj, det = verdict_bimodalite(res)
 
         # Données brutes espèce
-        sp_data   = summary_df[summary_df["Espèce"] == sp]
+        sp_data   = summary_df[summary_df[t["col_species_display"]] == sp]
         n_contacts_total = int(df_work[df_work["espece"] == sp].shape[0])
-        n_nuits_sp       = int(sp_data["Nuit acoustique"].nunique())
-        n_ind_total      = int(sp_data["Individus estimés"].sum())
+        n_nuits_sp       = int(sp_data[t["col_night_display"]].nunique())
+        n_ind_total      = int(sp_data[t["col_ind_display"]].sum())
         contacts_moy     = round(n_contacts_total / n_nuits_sp, 1) if n_nuits_sp else 0
         ind_moy          = round(n_ind_total / n_nuits_sp, 1) if n_nuits_sp else 0
 
         # Pic d'activité (nuit avec le plus d'individus)
         if not sp_data.empty and "confirmée" in lbl or "probable" in lbl:
-            pic_row  = sp_data.loc[sp_data["Individus estimés"].idxmax()]
-            pic_date = str(pic_row["Nuit acoustique"])
-            pic_ind  = int(pic_row["Individus estimés"])
+            pic_row  = sp_data.loc[sp_data[t["col_ind_display"]].idxmax()]
+            pic_date = str(pic_row[t["col_night_display"]])
+            pic_ind  = int(pic_row[t["col_ind_display"]])
         else:
-            pic_row  = sp_data.loc[sp_data["Contacts"].idxmax()] if not sp_data.empty else None
-            pic_date = str(pic_row["Nuit acoustique"]) if pic_row is not None else "—"
+            pic_row  = sp_data.loc[sp_data[t["col_contacts"]].idxmax()] if not sp_data.empty else None
+            pic_date = str(pic_row[t["col_night_display"]]) if pic_row is not None else "—"
             pic_ind  = None
 
         valide = "confirmée" in lbl or "probable" in lbl
