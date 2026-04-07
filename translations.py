@@ -5,7 +5,7 @@ LANGUAGES = {
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Séparateur d'individus — Chiroptères",
-        "app_title": "🦇 Séparateur d'individus — Acoustique chiroptères",
+        "app_title": "🦇 Convertisseur d'activité de chauves-souris en individus estimés",
         "author_credit": "Application conçue par Guillaume Marchais",
 
         # ── Sidebar ───────────────────────────────────────────────────────────
@@ -377,7 +377,7 @@ LANGUAGES = {
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Bat Individual Separator — Acoustic Monitoring",
-        "app_title": "🦇 Bat Individual Separator — Acoustic Monitoring",
+        "app_title": "🦇 Bat activity converter into estimated individuals",
         "author_credit": "Application designed by Guillaume Marchais",
 
         # ── Sidebar ───────────────────────────────────────────────────────────
@@ -635,7 +635,7 @@ LANGUAGES = {
             "*{sp}* was detected {n_contacts_total} times across {n_nuits_sp} nights of presence, "
             "averaging {contacts_moy} bat passes per night.\n\n"
             "**Individual estimation (separator method, {sep_min} min)**\n\n"
-            "The bimodality test on inter-pass intervals (Bimodality Coefficient, BC = {bc_str}) confirms "
+            "The bimodality test on bat pass intervals (Bimodality Coefficient, BC = {bc_str}) confirms "
             "the bimodal structure of the distribution: one peak of short intervals (< {sep_min} min, "
             "intra-individual) and a second peak of long intervals (> {sep_min} min, inter-individual). "
             "The separator method is therefore applicable for this species.\n\n"
