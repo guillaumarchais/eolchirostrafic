@@ -804,6 +804,7 @@ with tab3:
         .rename(columns={
             "Contacts_total": t["col_contacts_total"],
             "Individus_total": t["col_ind_total"],
+            "Nuits": t["col_nights"],
         })
     )
     totaux[t["col_avg_ind"]] = (totaux[t["col_ind_total"]] / totaux[t["col_nights"]]).round(1)
