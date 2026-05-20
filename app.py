@@ -293,14 +293,36 @@ _EU_FORMATS = [
 ]
 
 
+def _safe_date_str(col: "pd.Series") -> "pd.Series":
+    """Convert a date/datetime column to clean YYYY-MM-DD strings,
+    regardless of whether it is already datetime64 or raw text."""
+    if pd.api.types.is_datetime64_any_dtype(col):
+        return pd.to_datetime(col).dt.strftime("%Y-%m-%d")
+    return col.astype(str)
+
+
+def _safe_time_str(col: "pd.Series") -> "pd.Series":
+    """Convert a time column to clean HH:MM:SS strings,
+    regardless of whether it contains datetime.time objects or text."""
+    import datetime as _dt
+    first = col.dropna().iloc[0] if len(col.dropna()) > 0 else None
+    if isinstance(first, _dt.time):
+        return col.apply(
+            lambda t: t.strftime("%H:%M:%S") if isinstance(t, _dt.time) else str(t)
+        )
+    return col.astype(str)
+
+
 def _parse_series_eu(series: "pd.Series") -> "pd.Series":
     """Try explicit EU date formats first, then fall back to dayfirst=True inference."""
+    # If already datetime64, return as-is — no re-parsing needed
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return pd.to_datetime(series)
     sample = series.dropna().astype(str)
     for fmt in _EU_FORMATS:
         parsed = pd.to_datetime(sample, format=fmt, errors="coerce")
         ratio = parsed.notna().mean()
         if ratio >= 0.9:
-            # Format matches: apply to full series
             return pd.to_datetime(series.astype(str), format=fmt, errors="coerce")
     # Fallback: let pandas infer but force dayfirst
     return pd.to_datetime(series, dayfirst=True, errors="coerce")
@@ -309,9 +331,17 @@ def _parse_series_eu(series: "pd.Series") -> "pd.Series":
 def try_parse_datetime(df, col_dt=None, col_date=None, col_time=None):
     try:
         if col_dt:
-            series = _parse_series_eu(df[col_dt])
+            col = df[col_dt]
+            # If already datetime64 (e.g. from Excel), return directly
+            if pd.api.types.is_datetime64_any_dtype(col):
+                series = pd.to_datetime(col)
+            else:
+                series = _parse_series_eu(col)
         else:
-            combined = df[col_date].astype(str) + " " + df[col_time].astype(str)
+            # Robust string conversion — avoids repr() bugs on datetime.time
+            date_str = _safe_date_str(df[col_date])
+            time_str = _safe_time_str(df[col_time])
+            combined = date_str + " " + time_str
             series = _parse_series_eu(combined)
         if series.isna().all():
             return None, "Aucune date valide reconnue."
