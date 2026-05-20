@@ -274,15 +274,45 @@ def parse_file(uploaded):
     return df
 
 
+# Formats européens tentés en priorité (DD/MM/YYYY), puis inférence dayfirst
+_EU_FORMATS = [
+    "%d/%m/%Y %H:%M:%S",
+    "%d/%m/%Y %H:%M",
+    "%d/%m/%Y",
+    "%d-%m-%Y %H:%M:%S",
+    "%d-%m-%Y %H:%M",
+    "%d-%m-%Y",
+    "%d.%m.%Y %H:%M:%S",
+    "%d.%m.%Y %H:%M",
+    "%d.%m.%Y",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d %H:%M",
+    "%Y-%m-%d",
+    "%d/%m/%y %H:%M",
+    "%d/%m/%y",
+]
+
+
+def _parse_series_eu(series: "pd.Series") -> "pd.Series":
+    """Try explicit EU date formats first, then fall back to dayfirst=True inference."""
+    sample = series.dropna().astype(str)
+    for fmt in _EU_FORMATS:
+        parsed = pd.to_datetime(sample, format=fmt, errors="coerce")
+        ratio = parsed.notna().mean()
+        if ratio >= 0.9:
+            # Format matches: apply to full series
+            return pd.to_datetime(series.astype(str), format=fmt, errors="coerce")
+    # Fallback: let pandas infer but force dayfirst
+    return pd.to_datetime(series, dayfirst=True, errors="coerce")
+
+
 def try_parse_datetime(df, col_dt=None, col_date=None, col_time=None):
     try:
         if col_dt:
-            # Correction : on retire l'argument supprimé
-            series = pd.to_datetime(df[col_dt], dayfirst=True)
+            series = _parse_series_eu(df[col_dt])
         else:
             combined = df[col_date].astype(str) + " " + df[col_time].astype(str)
-            # Correction : on retire l'argument supprimé
-            series = pd.to_datetime(combined, dayfirst=True)
+            series = _parse_series_eu(combined)
         if series.isna().all():
             return None, "Aucune date valide reconnue."
         return series, None
@@ -366,8 +396,7 @@ with st.sidebar:
                                                        ["datetime", "date", "time", "heure"])), 0))
         col_date_sep = col_time_sep = None
         # Vérification : la colonne doit contenir une heure réelle
-        _test_dt = pd.to_datetime(raw_df[col_datetime].dropna().iloc[:10],
-                                  dayfirst=True, errors="coerce")
+        _test_dt = _parse_series_eu(raw_df[col_datetime].dropna().iloc[:10])
         if (_test_dt.dt.hour == 0).all():
             st.warning(t["warning_no_time"].format(col=col_datetime))
     else:
