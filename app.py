@@ -615,7 +615,7 @@ with tab1:
     nightly["nuit_acoustique"] = nightly["nuit_acoustique"].astype(str)
 
     sp_filter1 = st.multiselect(
-        t["species_to_display"], all_species, default=all_species[:min(5, len(all_species))],
+        t["species_to_display"], all_species, default=all_species,
         key="sp_filter1"
     )
     nightly_f = nightly[nightly["espece"].isin(sp_filter1)] if sp_filter1 else nightly
@@ -785,7 +785,7 @@ with tab3:
     with col_l3:
         sp_filter3 = st.multiselect(
             t["species_label"], all_species,
-            default=all_species[:min(5, len(all_species))],
+            default=all_species,
             key="sp_filter3"
         )
 
@@ -999,7 +999,7 @@ with tab4:
     st.subheader(t["tab4_subtitle_pheno"])
     sp_pheno = st.multiselect(
         t["species_label"], all_species,
-        default=all_species[:min(4, len(all_species))],
+        default=all_species,
         key="sp_pheno"
     )
     summary_pheno = summary_df[summary_df[t["col_species_display"]].isin(sp_pheno)].copy() if sp_pheno else summary_df.copy()
