@@ -5,7 +5,7 @@ LANGUAGES = {
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Séparateur d'individus — Chiroptères",
-        "app_title": "🦇 Convertisseur d'activité de chauves-souris en individus estimés",
+        "app_title": "🦇 Séparateur d'individus — Acoustique chiroptères",
         "author_credit": "Application conçue par Guillaume Marchais",
 
         # ── Sidebar ───────────────────────────────────────────────────────────
@@ -332,7 +332,21 @@ LANGUAGES = {
         "t_fin": "t_fin",
         "intervalle_min": "intervalle_min",
 
-        # ── Legacy keys (kept for compatibility) ──────────────────────────────
+                # ── Tableau de synthèse (tab Rapport) ───────────────────────────────────
+        "report_summary_title": "Tableau de synthèse par espèce",
+        "synth_col_nights": "Nuits avec contacts",
+        "synth_col_ind": "Occurrences d'individus (cumul nocturne)",
+        "synth_col_bc": "BC (log)",
+        "synth_col_bimo": "Bimodalité",
+        "synth_col_valid": "Séparateur valide",
+        "synth_caption": (
+            "Occurrences d'individus = cumul des estimations nocturnes par la méthode du séparateur. "
+            "Un même individu peut être comptabilisé plusieurs nuits de suite. "
+            "* Méthode du séparateur non applicable : valeur = nombre de nuits avec au moins un contact "
+            "(minimum d'individus par défaut)."
+        ),
+
+# ── Legacy keys (kept for compatibility) ──────────────────────────────
         "sidebar_params": "⚙️ Paramètres",
         "step_1": "1 · Import des données",
         "load_demo": "Charger les données de démonstration",
@@ -377,7 +391,7 @@ LANGUAGES = {
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Bat Individual Separator — Acoustic Monitoring",
-        "app_title": "🦇 Bat activity converter into estimated individuals",
+        "app_title": "🦇 Bat Individual Separator — Acoustic Monitoring",
         "author_credit": "Application designed by Guillaume Marchais",
 
         # ── Sidebar ───────────────────────────────────────────────────────────
@@ -635,7 +649,7 @@ LANGUAGES = {
             "*{sp}* was detected {n_contacts_total} times across {n_nuits_sp} nights of presence, "
             "averaging {contacts_moy} bat passes per night.\n\n"
             "**Individual estimation (separator method, {sep_min} min)**\n\n"
-            "The bimodality test on bat pass intervals (Bimodality Coefficient, BC = {bc_str}) confirms "
+            "The bimodality test on inter-pass intervals (Bimodality Coefficient, BC = {bc_str}) confirms "
             "the bimodal structure of the distribution: one peak of short intervals (< {sep_min} min, "
             "intra-individual) and a second peak of long intervals (> {sep_min} min, inter-individual). "
             "The separator method is therefore applicable for this species.\n\n"
@@ -698,6 +712,20 @@ LANGUAGES = {
         "t_debut": "t_debut",
         "t_fin": "t_fin",
         "intervalle_min": "intervalle_min",
+
+                # ── Synthesis table (Report tab) ─────────────────────────────────────────
+        "report_summary_title": "Species synthesis table",
+        "synth_col_nights": "Nights with detections",
+        "synth_col_ind": "Individual occurrences (nightly cumul)",
+        "synth_col_bc": "BC (log)",
+        "synth_col_bimo": "Bimodality",
+        "synth_col_valid": "Separator valid",
+        "synth_caption": (
+            "Individual occurrences = cumulative nightly estimates from the separator method. "
+            "The same individual may be counted on consecutive nights. "
+            "* Separator method not applicable: value = number of nights with at least one detection "
+            "(minimum individual count by default)."
+        ),
 
         # ── Legacy keys (kept for compatibility) ──────────────────────────────
         "sidebar_params": "⚙️ Settings",
