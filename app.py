@@ -1255,17 +1255,14 @@ with tab6:
         n_nuits  = int(sp_data[t["col_night_display"]].nunique())
         n_ind    = int(sp_data[t["col_ind_display"]].sum())
 
-        res      = test_bimodalite(get_gaps_for_species(gap_df, sp), sep_min)
-        lbl      = verdict_bimodalite(res)
-        emj      = ("✅" if "confirmée" in lbl else
-                    "🟡" if "probable"   in lbl else
-                    "❌" if "non"        in lbl else "⬜")
-        bc_str   = f"{res['bc']:.3f}" if res["bc"] is not None else "—"
+        res        = test_bimodalite(get_gaps_for_species(gap_df, sp), sep_min)
+        lbl, emj, _ = verdict_bimodalite(res)   # tuple (label, emoji, detail)
+        bc_str     = f"{res['bc']:.3f}" if res["bc"] is not None else "—"
 
         # "probable" = BC confirme, Dip diverge → méthode valide, pas d'astérisque
-        valide   = sep_ok = (t["val_yes"]      if "confirmée" in lbl else
-                             t["val_probable"] if "probable"   in lbl else
-                             t["val_no"]       if "non"        in lbl else t["val_na"])
+        sep_ok = (t["val_yes"]      if "confirmée" in lbl else
+                  t["val_probable"] if "probable"   in lbl else
+                  t["val_no"]       if "non"        in lbl else t["val_na"])
 
         method_applicable = sep_ok in (t["val_yes"], t["val_probable"])
         ind_display = n_ind if method_applicable else f"{n_nuits} *"
