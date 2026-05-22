@@ -339,6 +339,7 @@ LANGUAGES = {
         "synth_col_bc": "BC (log)",
         "synth_col_bimo": "Bimodalité",
         "synth_col_valid": "Séparateur valide",
+        "synth_total_label": "TOTAL",
         "synth_caption": (
             "Occurrences d'individus = cumul des estimations nocturnes par la méthode du séparateur. "
             "Un même individu peut être comptabilisé plusieurs nuits de suite. "
@@ -720,6 +721,7 @@ LANGUAGES = {
         "synth_col_bc": "BC (log)",
         "synth_col_bimo": "Bimodality",
         "synth_col_valid": "Separator valid",
+        "synth_total_label": "TOTAL",
         "synth_caption": (
             "Individual occurrences = cumulative nightly estimates from the separator method. "
             "The same individual may be counted on consecutive nights. "
