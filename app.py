@@ -1247,6 +1247,9 @@ with tab6:
     # ── Tableau de synthèse ───────────────────────────────────────────────────
     st.subheader(t["report_summary_title"])
     synth_rows = []
+    total_nuits_sum = 0
+    total_ind_sum   = 0
+
     for sp in all_species:
         sp_data  = summary_df[summary_df[t["col_species_display"]] == sp]
         n_nuits  = int(sp_data[t["col_night_display"]].nunique())
@@ -1258,18 +1261,37 @@ with tab6:
                     "🟡" if "probable"   in lbl else
                     "❌" if "non"        in lbl else "⬜")
         bc_str   = f"{res['bc']:.3f}" if res["bc"] is not None else "—"
-        sep_ok   = (t["val_yes"]      if "confirmée" in lbl else
-                    t["val_probable"] if "probable"   in lbl else
-                    t["val_no"]       if "non"        in lbl else t["val_na"])
+
+        # "probable" = BC confirme, Dip diverge → méthode valide, pas d'astérisque
+        valide   = sep_ok = (t["val_yes"]      if "confirmée" in lbl else
+                             t["val_probable"] if "probable"   in lbl else
+                             t["val_no"]       if "non"        in lbl else t["val_na"])
+
+        method_applicable = sep_ok in (t["val_yes"], t["val_probable"])
+        ind_display = n_ind if method_applicable else f"{n_nuits} *"
+        ind_numeric = n_ind if method_applicable else n_nuits   # pour le total
+
+        total_nuits_sum += n_nuits
+        total_ind_sum   += ind_numeric
 
         synth_rows.append({
             t["col_species_display"]:  sp,
             t["synth_col_nights"]:     n_nuits,
-            t["synth_col_ind"]:        n_ind if sep_ok not in (t["val_no"], t["val_na"]) else f"{n_nuits} *",
+            t["synth_col_ind"]:        ind_display,
             t["synth_col_bc"]:         bc_str,
             t["synth_col_bimo"]:       f"{emj} {lbl}",
             t["synth_col_valid"]:      sep_ok,
         })
+
+    # Ligne de totaux
+    synth_rows.append({
+        t["col_species_display"]:  f"**{t['synth_total_label']}**",
+        t["synth_col_nights"]:     f"**{total_nuits_sum}**",
+        t["synth_col_ind"]:        f"**{total_ind_sum}**",
+        t["synth_col_bc"]:         "",
+        t["synth_col_bimo"]:       "",
+        t["synth_col_valid"]:      "",
+    })
 
     synth_df = pd.DataFrame(synth_rows)
     st.dataframe(synth_df, use_container_width=True, hide_index=True)
