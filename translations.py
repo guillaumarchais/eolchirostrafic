@@ -347,6 +347,51 @@ LANGUAGES = {
             "(minimum d'individus par défaut)."
         ),
 
+        # ── Bridage adaptatif (tab 7) ─────────────────────────────────────────
+        "tab_bridage": "🌬️ Bridage",
+        "tab7_title": "Bridage adaptatif — Contacts et individus résiduels",
+        "bridage_intro": (
+            "Définissez les périodes et seuils du plan de bridage. "
+            "Seuls les contacts enregistrés en dehors des conditions de bridage "
+            "(vent ou température hors seuil) sont comptabilisés comme résiduels."
+        ),
+        "bridage_no_cols": (
+            "⚠️ Colonnes **vitesse du vent** et/ou **température** non détectées dans le fichier source. "
+            "Ajoutez ces colonnes à votre tableur et mappez-les dans la section **2 · Mapping des colonnes** de la barre latérale."
+        ),
+        "sidebar_env": "🌡️ Vent & Température",
+        "none_option": "— aucune —",
+        "wind_col_label": "Colonne vitesse du vent (m/s)",
+        "temp_col_label": "Colonne température (°C)",
+        "bridage_periods_title": "Périodes de bridage",
+        "n_periods_label": "Nombre de périodes",
+        "period_label": "Période {n}",
+        "period_start": "Début",
+        "period_end": "Fin",
+        "wind_threshold": "Vent ≤ (m/s)",
+        "wind_threshold_help": "Bridage actif quand la vitesse du vent est strictement inférieure à ce seuil.",
+        "temp_threshold": "Temp ≥ (°C)",
+        "temp_threshold_help": "Bridage actif quand la température est strictement supérieure à ce seuil.",
+        "metric_curtailed": "Contacts bridés",
+        "metric_residual": "Contacts résiduels",
+        "bridage_all_protected": "✅ Tous les contacts sont couverts par les périodes de bridage définies.",
+        "residual_by_species_title": "Contacts et individus résiduels par espèce",
+        "col_residual_contacts": "Contacts résiduels",
+        "col_total_contacts_br": "Contacts totaux",
+        "col_pct_residual": "% résiduel",
+        "col_residual_ind": "Individus résiduels",
+        "bridage_table_caption": (
+            "Contacts résiduels = contacts hors conditions de bridage (vent ou température dépassant les seuils). "
+            "Individus résiduels = estimation par la méthode du séparateur sur contacts résiduels uniquement. "
+            "* Méthode non applicable : valeur = nuits avec contacts résiduels (minimum par défaut)."
+        ),
+        "residual_chart_title": "Contacts résiduels par nuit et par espèce",
+        "residual_ind_title": "Individus résiduels estimés par nuit et par espèce",
+        "bridage_ind_caption": (
+            "Individus estimés sur les seuls contacts résiduels (hors bridage). "
+            "La méthode du séparateur est appliquée indépendamment sur chaque espèce."
+        ),
+
 # ── Legacy keys (kept for compatibility) ──────────────────────────────
         "sidebar_params": "⚙️ Paramètres",
         "step_1": "1 · Import des données",
@@ -727,6 +772,51 @@ LANGUAGES = {
             "The same individual may be counted on consecutive nights. "
             "* Separator method not applicable: value = number of nights with at least one detection "
             "(minimum individual count by default)."
+        ),
+
+        # ── Adaptive curtailment (tab 7) ─────────────────────────────────────
+        "tab_bridage": "🌬️ Curtailment",
+        "tab7_title": "Adaptive curtailment — Residual contacts and individuals",
+        "bridage_intro": (
+            "Define curtailment periods and thresholds. "
+            "Only contacts recorded outside curtailment conditions "
+            "(wind or temperature exceeding thresholds) are counted as residual."
+        ),
+        "bridage_no_cols": (
+            "⚠️ **Wind speed** and/or **temperature** columns not detected in the source file. "
+            "Add these columns to your spreadsheet and map them in the **2 · Column mapping** section of the sidebar."
+        ),
+        "sidebar_env": "🌡️ Wind & Temperature",
+        "none_option": "— none —",
+        "wind_col_label": "Wind speed column (m/s)",
+        "temp_col_label": "Temperature column (°C)",
+        "bridage_periods_title": "Curtailment periods",
+        "n_periods_label": "Number of periods",
+        "period_label": "Period {n}",
+        "period_start": "Start",
+        "period_end": "End",
+        "wind_threshold": "Wind ≤ (m/s)",
+        "wind_threshold_help": "Curtailment active when wind speed is strictly below this threshold.",
+        "temp_threshold": "Temp ≥ (°C)",
+        "temp_threshold_help": "Curtailment active when temperature is strictly above this threshold.",
+        "metric_curtailed": "Curtailed contacts",
+        "metric_residual": "Residual contacts",
+        "bridage_all_protected": "✅ All contacts are covered by the defined curtailment periods.",
+        "residual_by_species_title": "Residual contacts and individuals by species",
+        "col_residual_contacts": "Residual contacts",
+        "col_total_contacts_br": "Total contacts",
+        "col_pct_residual": "% residual",
+        "col_residual_ind": "Residual individuals",
+        "bridage_table_caption": (
+            "Residual contacts = contacts recorded outside curtailment conditions (wind or temperature exceeding thresholds). "
+            "Residual individuals = estimated via separator method on residual contacts only. "
+            "* Separator method not applicable: value = nights with residual contacts (minimum by default)."
+        ),
+        "residual_chart_title": "Residual contacts per night and species",
+        "residual_ind_title": "Estimated residual individuals per night and species",
+        "bridage_ind_caption": (
+            "Individuals estimated on residual contacts only (outside curtailment). "
+            "The separator method is applied independently per species."
         ),
 
         # ── Legacy keys (kept for compatibility) ──────────────────────────────
