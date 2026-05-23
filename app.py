@@ -473,6 +473,29 @@ with st.sidebar:
     if not HAS_DIPTEST:
         st.warning(t["warning_diptest"])
 
+    # ── Colonnes environnementales (optionnel) ───────────────────────────────
+    _wind_kw = ["vent", "wind", "vitesse_v", "vit_v", "ws", "v_ms", "windspeed"]
+    _temp_kw = ["temp", "°c", "celsius", "t_air", "t_ext", "temperature"]
+    _wind_candidates = [c for c in cols if any(k in c.lower() for k in _wind_kw)]
+    _temp_candidates  = [c for c in cols if any(k in c.lower() for k in _temp_kw)]
+
+    if _wind_candidates or _temp_candidates:
+        st.subheader(t["sidebar_env"])
+        _none_opt = [t["none_option"]]
+        col_wind = st.selectbox(
+            t["wind_col_label"], _none_opt + cols,
+            index=(_none_opt + cols).index(_wind_candidates[0]) if _wind_candidates else 0,
+        )
+        col_temp = st.selectbox(
+            t["temp_col_label"], _none_opt + cols,
+            index=(_none_opt + cols).index(_temp_candidates[0]) if _temp_candidates else 0,
+        )
+        col_wind = None if col_wind == t["none_option"] else col_wind
+        col_temp  = None if col_temp  == t["none_option"] else col_temp
+    else:
+        col_wind = None
+        col_temp  = None
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Préparation des données
@@ -493,6 +516,16 @@ df_work = pd.DataFrame({
 df_work.dropna(subset=["datetime", "espece"], inplace=True)
 df_work = df_work[df_work["espece"] != ""]
 df_work["nuit_acoustique"] = df_work["datetime"].apply(acoustic_night)
+
+# Colonnes environnementales (vent, température) — alignement sur la même masque de validité
+if col_wind and col_wind in raw_df.columns:
+    df_work["vent_ms"] = pd.to_numeric(
+        raw_df[col_wind].loc[df_work.index].values, errors="coerce"
+    )
+if col_temp and col_temp in raw_df.columns:
+    df_work["temp_c"] = pd.to_numeric(
+        raw_df[col_temp].loc[df_work.index].values, errors="coerce"
+    )
 
 # Filtre période
 if apply_period and date_range and len(date_range) == 2:
@@ -558,13 +591,14 @@ st.divider()
 # ─────────────────────────────────────────────────────────────────────────────
 # Onglets
 # ─────────────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     t["tab_data"],
     t["tab_distribution"],
     t["tab_estimation"],
     t["tab_phenology"],
     t["tab_export"],
     t["tab_report"],
+    t["tab_bridage"],
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1294,6 +1328,191 @@ with tab6:
 
     st.markdown("---")
     st.caption(t["caption_report"])
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 7 — Bridage adaptatif
+# ══════════════════════════════════════════════════════════════════════════════
+with tab7:
+    st.subheader(t["tab7_title"])
+
+    has_wind = "vent_ms" in df_work.columns and df_work["vent_ms"].notna().any()
+    has_temp  = "temp_c"  in df_work.columns and df_work["temp_c"].notna().any()
+
+    if not has_wind or not has_temp:
+        st.info(t["bridage_no_cols"])
+    else:
+        st.caption(t["bridage_intro"])
+
+        # ── Définition des périodes de bridage ────────────────────────────────
+        st.markdown(f"#### {t['bridage_periods_title']}")
+        night_min = df_work["nuit_acoustique"].min()
+        night_max = df_work["nuit_acoustique"].max()
+
+        n_periods = st.number_input(
+            t["n_periods_label"], min_value=1, max_value=10, value=1, step=1
+        )
+
+        periods = []
+        for i in range(int(n_periods)):
+            with st.expander(t["period_label"].format(n=i + 1), expanded=True):
+                pc1, pc2, pc3, pc4 = st.columns([2, 2, 1, 1])
+                p_start = pc1.date_input(
+                    t["period_start"], value=night_min,
+                    min_value=night_min, max_value=night_max,
+                    key=f"br_start_{i}"
+                )
+                p_end = pc2.date_input(
+                    t["period_end"], value=night_max,
+                    min_value=night_min, max_value=night_max,
+                    key=f"br_end_{i}"
+                )
+                p_wind = pc3.number_input(
+                    t["wind_threshold"], value=6.0, min_value=0.0,
+                    max_value=30.0, step=0.5, format="%.1f",
+                    help=t["wind_threshold_help"],
+                    key=f"br_wind_{i}"
+                )
+                p_temp = pc4.number_input(
+                    t["temp_threshold"], value=12.0, min_value=-10.0,
+                    max_value=40.0, step=0.5, format="%.1f",
+                    help=t["temp_threshold_help"],
+                    key=f"br_temp_{i}"
+                )
+                periods.append({
+                    "start": p_start, "end": p_end,
+                    "wind": p_wind, "temp": p_temp,
+                })
+
+        # ── Calcul du masque de bridage ───────────────────────────────────────
+        def _is_curtailed(row):
+            night = row["nuit_acoustique"]
+            wind  = row.get("vent_ms", float("nan"))
+            temp  = row.get("temp_c",  float("nan"))
+            if pd.isna(wind) or pd.isna(temp):
+                return False
+            for p in periods:
+                if p["start"] <= night <= p["end"]:
+                    if wind < p["wind"] and temp > p["temp"]:
+                        return True
+            return False
+
+        curtailed_mask = df_work.apply(_is_curtailed, axis=1)
+        df_residual    = df_work[~curtailed_mask].copy()
+
+        # ── Métriques globales ────────────────────────────────────────────────
+        n_total     = len(df_work)
+        n_bridage   = int(curtailed_mask.sum())
+        n_residual  = len(df_residual)
+        pct_bridage = n_bridage / n_total * 100 if n_total else 0
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric(t["metric_contacts"],        f"{n_total:,}")
+        m2.metric(t["metric_curtailed"],       f"{n_bridage:,}",
+                  delta=f"{pct_bridage:.1f} %", delta_color="normal")
+        m3.metric(t["metric_residual"],        f"{n_residual:,}",
+                  delta=f"{100 - pct_bridage:.1f} %", delta_color="inverse")
+        m4.metric(t["metric_species"],         f"{n_species}")
+
+        st.divider()
+
+        if df_residual.empty:
+            st.success(t["bridage_all_protected"])
+        else:
+            # ── Tableau résiduel par espèce ───────────────────────────────────
+            st.markdown(f"#### {t['residual_by_species_title']}")
+
+            # Re-calculer summary sur données résiduelles
+            residual_summary = build_summary(df_residual, sep_min)
+            residual_summary = residual_summary.rename(columns={
+                "Nuit acoustique":  t["col_night_display"],
+                "Espèce":           t["col_species_display"],
+                "Contacts":         t["col_contacts"],
+                "Individus estimés": t["col_ind_display"],
+            })
+
+            res_rows = []
+            for sp in all_species:
+                tot_sp  = len(df_work[df_work["espece"] == sp])
+                res_sp  = df_residual[df_residual["espece"] == sp]
+                n_res_c = len(res_sp)
+                pct_res = n_res_c / tot_sp * 100 if tot_sp else 0
+
+                sp_res_sum = residual_summary[
+                    residual_summary[t["col_species_display"]] == sp
+                ]
+                n_res_ind  = int(sp_res_sum[t["col_ind_display"]].sum()) if not sp_res_sum.empty else 0
+
+                # Vérifier si bimodalité valide pour cette espèce
+                res_bm   = test_bimodalite(get_gaps_for_species(gap_df, sp), sep_min)
+                lbl_bm, _, _ = verdict_bimodalite(res_bm)
+                ind_valid = "confirmée" in lbl_bm or "probable" in lbl_bm
+
+                res_rows.append({
+                    t["col_species_display"]:   sp,
+                    t["col_residual_contacts"]: n_res_c,
+                    t["col_total_contacts_br"]: tot_sp,
+                    t["col_pct_residual"]:      f"{pct_res:.1f} %",
+                    t["col_residual_ind"]:      n_res_ind if ind_valid else f"{sp_res_sum[t['col_night_display']].nunique() if not sp_res_sum.empty else 0} *",
+                })
+
+            res_df = pd.DataFrame(res_rows)
+            st.dataframe(res_df, use_container_width=True, hide_index=True)
+            st.caption(t["bridage_table_caption"])
+
+            # ── Graphique résiduel par nuit ───────────────────────────────────
+            if not residual_summary.empty:
+                st.markdown(f"#### {t['residual_chart_title']}")
+                nightly_res = (
+                    df_residual.groupby(["nuit_acoustique", "espece"])
+                    .size().reset_index(name="contacts")
+                    .rename(columns={
+                        "nuit_acoustique": t["col_night_display"],
+                        "espece":          t["col_species_display"],
+                        "contacts":        t["col_contacts"],
+                    })
+                )
+                nightly_res[t["col_night_display"]] = (
+                    nightly_res[t["col_night_display"]].astype(str)
+                )
+                fig_res = px.bar(
+                    nightly_res,
+                    x=t["col_night_display"], y=t["col_contacts"],
+                    color=t["col_species_display"],
+                    color_discrete_map=species_color,
+                    labels={
+                        t["col_night_display"]: t["col_night_display"],
+                        t["col_contacts"]:       t["col_contacts"],
+                    },
+                    height=340,
+                )
+                fig_res.update_layout(bargap=0.1, plot_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig_res, use_container_width=True)
+
+                # ── Individus résiduels estimés par nuit ──────────────────────
+                st.markdown(f"#### {t['residual_ind_title']}")
+                sp_filter_res = st.multiselect(
+                    t["species_label"], all_species,
+                    default=all_species, key="sp_filter_res"
+                )
+                res_sum_f = residual_summary[
+                    residual_summary[t["col_species_display"]].isin(sp_filter_res)
+                ] if sp_filter_res else residual_summary
+                res_sum_f = res_sum_f.copy()
+                res_sum_f[t["col_night_display"]] = res_sum_f[t["col_night_display"]].astype(str)
+
+                fig_res_ind = px.bar(
+                    res_sum_f,
+                    x=t["col_night_display"], y=t["col_ind_display"],
+                    color=t["col_species_display"],
+                    color_discrete_map=species_color,
+                    labels={t["col_night_display"]: t["col_night_display"]},
+                    height=340,
+                )
+                fig_res_ind.update_layout(bargap=0.1, plot_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig_res_ind, use_container_width=True)
+                st.caption(t["bridage_ind_caption"])
 
 # ── Crédit auteur ─────────────────────────────────────────────────────────────
 st.markdown(
