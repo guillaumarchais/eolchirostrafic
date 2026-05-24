@@ -1357,7 +1357,8 @@ with tab7:
         periods = []
         for i in range(int(n_periods)):
             with st.expander(t["period_label"].format(n=i + 1), expanded=True):
-                pc1, pc2, pc3, pc4 = st.columns([2, 2, 1, 1])
+                # ── Ligne 1 : plage calendaire ────────────────────────────────
+                pc1, pc2 = st.columns(2)
                 p_start = pc1.date_input(
                     t["period_start"], value=night_min,
                     min_value=night_min, max_value=night_max,
@@ -1368,33 +1369,75 @@ with tab7:
                     min_value=night_min, max_value=night_max,
                     key=f"br_end_{i}"
                 )
-                p_wind = pc3.number_input(
+                # ── Ligne 2 : plage horaire ───────────────────────────────────
+                ph1, ph2 = st.columns(2)
+                p_time_start = ph1.number_input(
+                    t["time_start"], min_value=0, max_value=23, value=21, step=1,
+                    format="%dh", help=t["time_start_help"],
+                    key=f"br_tstart_{i}"
+                )
+                p_time_end = ph2.number_input(
+                    t["time_end"], min_value=0, max_value=23, value=7, step=1,
+                    format="%dh", help=t["time_end_help"],
+                    key=f"br_tend_{i}"
+                )
+                # ── Ligne 3 : seuils vent & temp ──────────────────────────────
+                pw1, pw2 = st.columns(2)
+                p_wind = pw1.number_input(
                     t["wind_threshold"], value=6.0, min_value=0.0,
                     max_value=30.0, step=0.5, format="%.1f",
                     help=t["wind_threshold_help"],
                     key=f"br_wind_{i}"
                 )
-                p_temp = pc4.number_input(
+                p_temp = pw2.number_input(
                     t["temp_threshold"], value=12.0, min_value=-10.0,
                     max_value=40.0, step=0.5, format="%.1f",
                     help=t["temp_threshold_help"],
                     key=f"br_temp_{i}"
                 )
+                # Résumé lisible de la période
+                cross = p_time_start > p_time_end   # plage chevauche minuit
+                if cross:
+                    hrange = f"{p_time_start:02d}h → {p_time_end:02d}h (+1)"
+                else:
+                    hrange = f"{p_time_start:02d}h → {p_time_end:02d}h"
+                st.caption(
+                    t["period_summary"].format(
+                        start=p_start, end=p_end, hrange=hrange,
+                        wind=p_wind, temp=p_temp
+                    )
+                )
                 periods.append({
-                    "start": p_start, "end": p_end,
-                    "wind": p_wind, "temp": p_temp,
+                    "start":      p_start,
+                    "end":        p_end,
+                    "time_start": int(p_time_start),
+                    "time_end":   int(p_time_end),
+                    "wind":       p_wind,
+                    "temp":       p_temp,
                 })
 
         # ── Calcul du masque de bridage ───────────────────────────────────────
+        def _in_time_window(dt, h_start, h_end):
+            """True si l'heure de dt est dans la plage [h_start, h_end).
+            Gère le cas minuit-chevauchant (ex. 21h → 07h)."""
+            h = dt.hour
+            if h_start <= h_end:          # plage intra-journalière : ex. 08h → 20h
+                return h_start <= h < h_end
+            else:                          # plage chevauchant minuit : ex. 21h → 07h
+                return h >= h_start or h < h_end
+
         def _is_curtailed(row):
             night = row["nuit_acoustique"]
             wind  = row.get("vent_ms", float("nan"))
             temp  = row.get("temp_c",  float("nan"))
             if pd.isna(wind) or pd.isna(temp):
                 return False
+            dt = row["datetime"]
             for p in periods:
                 if p["start"] <= night <= p["end"]:
-                    if wind < p["wind"] and temp > p["temp"]:
+                    if (wind < p["wind"]
+                            and temp > p["temp"]
+                            and _in_time_window(dt, p["time_start"], p["time_end"])):
                         return True
             return False
 
