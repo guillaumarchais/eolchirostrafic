@@ -349,6 +349,14 @@ LANGUAGES = {
 
         # ── Bridage adaptatif (tab 7) ─────────────────────────────────────────
         "tab_bridage": "🌬️ Bridage",
+        "time_start": "Heure début (h)",
+        "time_start_help": "Heure de début du bridage (incluse). Ex : 21 = à partir de 21h00.",
+        "time_end": "Heure fin (h)",
+        "time_end_help": (
+            "Heure de fin du bridage (exclue). Ex : 7 = jusqu'à 06h59. "
+            "Si fin < début, la plage chevauche minuit."
+        ),
+        "period_summary": "📅 {start} → {end}  |  🕐 {hrange}  |  💨 ≤ {wind} m/s  |  🌡️ ≥ {temp} °C",
         "tab7_title": "Bridage adaptatif — Contacts et individus résiduels",
         "bridage_intro": (
             "Définissez les périodes et seuils du plan de bridage. "
@@ -776,6 +784,11 @@ LANGUAGES = {
 
         # ── Adaptive curtailment (tab 7) ─────────────────────────────────────
         "tab_bridage": "🌬️ Curtailment",
+        "time_start": "Start time (h)",
+        "time_start_help": "Curtailment start hour (inclusive). E.g. 21 = from 21:00.",
+        "time_end": "End time (h)",
+        "time_end_help": "Curtailment end hour (exclusive). E.g. 7 = until 06:59. If end < start, the window spans midnight.",
+        "period_summary": "📅 {start} → {end}  |  🕐 {hrange}  |  💨 ≤ {wind} m/s  |  🌡️ ≥ {temp} °C",
         "tab7_title": "Adaptive curtailment — Residual contacts and individuals",
         "bridage_intro": (
             "Define curtailment periods and thresholds. "
