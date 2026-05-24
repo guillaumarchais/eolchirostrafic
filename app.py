@@ -1373,12 +1373,12 @@ with tab7:
                 ph1, ph2 = st.columns(2)
                 p_time_start = ph1.number_input(
                     t["time_start"], min_value=0, max_value=23, value=21, step=1,
-                    format="%dh", help=t["time_start_help"],
+                    help=t["time_start_help"],
                     key=f"br_tstart_{i}"
                 )
                 p_time_end = ph2.number_input(
                     t["time_end"], min_value=0, max_value=23, value=7, step=1,
-                    format="%dh", help=t["time_end_help"],
+                    help=t["time_end_help"],
                     key=f"br_tend_{i}"
                 )
                 # ── Ligne 3 : seuils vent & temp ──────────────────────────────
