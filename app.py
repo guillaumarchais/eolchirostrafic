@@ -1557,6 +1557,139 @@ with tab7:
                 st.plotly_chart(fig_res_ind, use_container_width=True)
                 st.caption(t["bridage_ind_caption"])
 
+        st.markdown("---")
+        # ── Optimisation du plan de bridage ──────────────────────────────────
+        with st.expander(t["optim_title"], expanded=False):
+            st.markdown(t["optim_intro"])
+            oc1, oc2 = st.columns([1, 2])
+            target_pct = oc1.number_input(
+                t["optim_target_pct"], min_value=1.0, max_value=30.0,
+                value=10.0, step=1.0, format="%.0f"
+            )
+            run_optim = oc2.button(t["optim_run"], use_container_width=True)
+
+            if run_optim:
+                # ── Grille de paramètres (vent ≤ 7 m/s) ─────────────────────
+                WIND_GRID = [5.0, 5.5, 6.0, 6.5, 7.0]
+                TEMP_GRID = [6.0, 8.0, 10.0, 12.0, 14.0, 16.0]
+                TS_GRID   = [19, 20, 21, 22]
+                TE_GRID   = [4, 5, 6, 7, 8]
+
+                # ── Comptage rapide des individus résiduels ───────────────────
+                def _count_residual_ind(df_residual, sep_min_val):
+                    """Applique la méthode du séparateur aux contacts résiduels."""
+                    if len(df_residual) == 0:
+                        return 0
+                    total = 0
+                    for (_, _), grp in df_residual.groupby(
+                            ["espece", "nuit_acoustique"], sort=False):
+                        times = grp["datetime"].sort_values().values
+                        n_ind = 1
+                        for k in range(1, len(times)):
+                            gap = (times[k] - times[k - 1]) / np.timedelta64(1, "m")
+                            if gap > sep_min_val:
+                                n_ind += 1
+                        total += n_ind
+                    return total
+
+                for pi, p in enumerate(periods):
+                    st.markdown(f"#### {t['optim_period_title'].format(n=pi+1, start=p['start'], end=p['end'])}")
+
+                    df_p = df_work[
+                        (df_work["nuit_acoustique"] >= p["start"]) &
+                        (df_work["nuit_acoustique"] <= p["end"]) &
+                        df_work["vent_ms"].notna() &
+                        df_work["temp_c"].notna()
+                    ].copy()
+                    n_total = len(df_p)
+                    if n_total == 0:
+                        st.info(t["optim_no_contacts"])
+                        continue
+
+                    # Pré-trier pour accélérer le groupby interne
+                    df_p = df_p.sort_values(["espece", "nuit_acoustique", "datetime"])
+                    hour      = df_p["datetime"].dt.hour.values
+                    w_vals    = df_p["vent_ms"].values
+                    temp_vals = df_p["temp_c"].values
+                    n_total_ind = _count_residual_ind(df_p, sep_min)  # baseline
+
+                    results = []
+                    prog = st.progress(0, text=t["optim_progress"])
+                    n_combos = len(WIND_GRID) * len(TEMP_GRID) * len(TS_GRID) * len(TE_GRID)
+                    combo_i  = 0
+
+                    for w in WIND_GRID:
+                        m_wind = w_vals < w
+                        for tmp in TEMP_GRID:
+                            m_temp = temp_vals > tmp
+                            for ts in TS_GRID:
+                                for te in TE_GRID:
+                                    if ts <= te:
+                                        m_time = (hour >= ts) & (hour < te)
+                                    else:
+                                        m_time = (hour >= ts) | (hour < te)
+                                    m_curtailed = m_wind & m_temp & m_time
+                                    df_res = df_p[~m_curtailed]
+                                    n_res      = len(df_res)
+                                    pct_res    = round(n_res / n_total * 100, 1)
+                                    n_ind_res  = _count_residual_ind(df_res, sep_min)
+                                    pct_ind    = round(n_ind_res / max(n_total_ind, 1) * 100, 1)
+                                    n_curtailed = n_total - n_res
+                                    win_w = (te - ts) % 24
+                                    effort = win_w - (tmp / 4)
+                                    results.append({
+                                        "wind": w, "temp": tmp, "ts": ts, "te": te,
+                                        "n_res": n_res, "pct_res": pct_res,
+                                        "n_ind_res": n_ind_res, "pct_ind": pct_ind,
+                                        "n_curtailed": n_curtailed,
+                                        "pct_curtailed": round(n_curtailed / n_total * 100, 1),
+                                        "win_w": win_w, "effort": effort,
+                                    })
+                                    combo_i += 1
+                                    prog.progress(combo_i / n_combos,
+                                                  text=t["optim_progress"])
+                    prog.empty()
+
+                    # ── Tri priorité : individus résiduels → % contacts → vent ↓ → effort ↓
+                    valid = [r for r in results if r["pct_res"] <= target_pct]
+
+                    if valid:
+                        valid.sort(key=lambda r: (
+                            r["n_ind_res"],      # 1. minimiser individus résiduels
+                            r["pct_res"],        # 2. minimiser % contacts résiduels
+                            -r["wind"],          # 3. vent le plus élevé (≤ 7)
+                            r["effort"],         # 4. fenêtre la moins large
+                            -r["temp"],          # 5. temp la plus haute
+                        ))
+                        st.success(t["optim_found"].format(n=len(valid), target=target_pct))
+                        top = valid[:5]
+                    else:
+                        results_sorted = sorted(results, key=lambda r: (
+                            r["n_ind_res"], r["pct_res"], -r["wind"], r["effort"]
+                        ))
+                        top = results_sorted[:5]
+                        st.warning(t["optim_not_found"].format(
+                            best=top[0]["pct_res"], target=target_pct
+                        ))
+
+                    rows = []
+                    for j, r in enumerate(top):
+                        cross = r["ts"] > r["te"]
+                        hrange = f"{r['ts']:02d}h – {r['te']:02d}h" + (" (+1j)" if cross else "")
+                        highlight = "⭐ " if j == 0 else ""
+                        rows.append({
+                            "#":                            f"{highlight}{j+1}",
+                            t["wind_threshold"]:            f"≤ {r['wind']:.1f} m/s",
+                            t["temp_threshold"]:            f"≥ {r['temp']:.0f} °C",
+                            t["optim_col_window"]:          hrange,
+                            t["col_residual_ind"]:          f"{r['n_ind_res']} ({r['pct_ind']} %)",
+                            t["col_residual_contacts"]:     f"{r['n_res']} ({r['pct_res']} %)",
+                            t["optim_col_curtailed_pct"]:   f"{r['pct_curtailed']} %",
+                        })
+                    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+                    st.caption(t["optim_table_caption"])
+
+
 # ── Crédit auteur ─────────────────────────────────────────────────────────────
 st.markdown(
     "<div style='text-align: right; color: var(--text-color, #888); "
