@@ -349,6 +349,31 @@ LANGUAGES = {
 
         # ── Bridage adaptatif (tab 7) ─────────────────────────────────────────
         "tab_bridage": "🌬️ Bridage",
+        # ── Optimisation du plan de bridage ─────────────────────────────────────
+        "optim_title": "🔍 Optimisation du plan de bridage",
+        "optim_intro": (
+            "Recherche automatique des combinaisons (température, plage horaire) permettant d'atteindre "
+            "l'objectif de résiduel fixé, en privilégiant les seuils de vent les plus élevés (≤ 7 m/s) "
+            "pour minimiser les pertes de production."
+        ),
+        "optim_target_pct": "Objectif résiduel max (%)",
+        "optim_run": "▶  Calculer les scénarios optimaux",
+        "optim_period_title": "Période {n} — {start} → {end}",
+        "optim_no_contacts": "Aucun contact avec données vent/temp sur cette période.",
+        "optim_found": "{n} scénario(s) atteignant l'objectif (≤ {target} % résiduel). Les 5 moins contraignants :",
+        "optim_not_found": (
+            "⚠️ Aucun scénario avec vent ≤ 7 m/s n'atteint l'objectif. "
+            "Meilleur résultat obtenu : {best} % résiduel. "
+            "Les 5 scénarios les moins contraignants sont présentés ci-dessous :"
+        ),
+        "optim_col_window": "Plage horaire",
+        "optim_col_curtailed_pct": "Taux de bridage",
+        "optim_progress": "Calcul des scénarios en cours…",
+        "optim_table_caption": (
+            "Colonnes triées par priorité : individus résiduels (↑ critique), puis % contacts résiduels, "
+            "puis vent le plus élevé (production maximisée), puis fenêtre la plus étroite, puis temp la plus haute. "
+            "⭐ = meilleur compromis protection/production."
+        ),
         "time_start": "Heure début (h)",
         "time_start_help": "Heure de début du bridage (incluse). Ex : 21 = à partir de 21h00.",
         "time_end": "Heure fin (h)",
@@ -784,6 +809,31 @@ LANGUAGES = {
 
         # ── Adaptive curtailment (tab 7) ─────────────────────────────────────
         "tab_bridage": "🌬️ Curtailment",
+        # ── Curtailment plan optimisation ────────────────────────────────────────
+        "optim_title": "🔍 Curtailment plan optimisation",
+        "optim_intro": (
+            "Automatic search for (temperature, time window) combinations that achieve "
+            "the target residual level, prioritising the highest wind thresholds (≤ 7 m/s) "
+            "to minimise production losses."
+        ),
+        "optim_target_pct": "Max residual target (%)",
+        "optim_run": "▶  Calculate optimal scenarios",
+        "optim_period_title": "Period {n} — {start} → {end}",
+        "optim_no_contacts": "No contacts with wind/temp data for this period.",
+        "optim_found": "{n} scenario(s) achieving the target (≤ {target}% residual). The 5 least restrictive:",
+        "optim_not_found": (
+            "⚠️ No scenario with wind ≤ 7 m/s achieves the target. "
+            "Best result: {best}% residual. "
+            "The 5 least restrictive scenarios are shown below:"
+        ),
+        "optim_col_window": "Time window",
+        "optim_col_curtailed_pct": "Curtailment rate",
+        "optim_progress": "Computing scenarios…",
+        "optim_table_caption": (
+            "Columns sorted by priority: residual individuals (↑ critical), then residual contact %, "
+            "then highest wind threshold (maximising production), then narrowest window, then highest temp. "
+            "⭐ = best protection/production trade-off."
+        ),
         "time_start": "Start time (h)",
         "time_start_help": "Curtailment start hour (inclusive). E.g. 21 = from 21:00.",
         "time_end": "End time (h)",
