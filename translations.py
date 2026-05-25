@@ -353,7 +353,7 @@ LANGUAGES = {
         "optim_title": "🔍 Optimisation du plan de bridage",
         "optim_intro": (
             "Recherche automatique des combinaisons (température, plage horaire) permettant d'atteindre "
-            "l'objectif de résiduel fixé, en privilégiant les seuils de vent les plus élevés (≤ 7 m/s) "
+            "l'objectif de résiduel fixé, en privilégiant les seuils de vent les plus élevés (≤ 8 m/s) "
             "pour minimiser les pertes de production."
         ),
         "optim_target_pct": "Objectif résiduel max (%)",
@@ -362,7 +362,7 @@ LANGUAGES = {
         "optim_no_contacts": "Aucun contact avec données vent/temp sur cette période.",
         "optim_found": "{n} scénario(s) atteignant l'objectif (≤ {target} % résiduel). Les 5 moins contraignants :",
         "optim_not_found": (
-            "⚠️ Aucun scénario avec vent ≤ 7 m/s n'atteint l'objectif. "
+            "⚠️ Aucun scénario avec vent ≤ 8 m/s n'atteint l'objectif. "
             "Meilleur résultat obtenu : {best} % résiduel. "
             "Les 5 scénarios les moins contraignants sont présentés ci-dessous :"
         ),
@@ -813,7 +813,7 @@ LANGUAGES = {
         "optim_title": "🔍 Curtailment plan optimisation",
         "optim_intro": (
             "Automatic search for (temperature, time window) combinations that achieve "
-            "the target residual level, prioritising the highest wind thresholds (≤ 7 m/s) "
+            "the target residual level, prioritising the highest wind thresholds (≤ 8 m/s) "
             "to minimise production losses."
         ),
         "optim_target_pct": "Max residual target (%)",
@@ -822,7 +822,7 @@ LANGUAGES = {
         "optim_no_contacts": "No contacts with wind/temp data for this period.",
         "optim_found": "{n} scenario(s) achieving the target (≤ {target}% residual). The 5 least restrictive:",
         "optim_not_found": (
-            "⚠️ No scenario with wind ≤ 7 m/s achieves the target. "
+            "⚠️ No scenario with wind ≤ 8 m/s achieves the target. "
             "Best result: {best}% residual. "
             "The 5 least restrictive scenarios are shown below:"
         ),
