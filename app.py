@@ -1569,8 +1569,8 @@ with tab7:
             run_optim = oc2.button(t["optim_run"], use_container_width=True)
 
             if run_optim:
-                # ── Grille de paramètres (vent ≤ 7 m/s) ─────────────────────
-                WIND_GRID = [5.0, 5.5, 6.0, 6.5, 7.0]
+                # ── Grille de paramètres (vent ≤ 8 m/s) ─────────────────────
+                WIND_GRID = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
                 TEMP_GRID = [6.0, 8.0, 10.0, 12.0, 14.0, 16.0]
                 TS_GRID   = [19, 20, 21, 22]
                 TE_GRID   = [4, 5, 6, 7, 8]
@@ -1657,7 +1657,7 @@ with tab7:
                         valid.sort(key=lambda r: (
                             r["n_ind_res"],      # 1. minimiser individus résiduels
                             r["pct_res"],        # 2. minimiser % contacts résiduels
-                            -r["wind"],          # 3. vent le plus élevé (≤ 7)
+                            -r["wind"],          # 3. vent le plus élevé (≤ 8)
                             r["effort"],         # 4. fenêtre la moins large
                             -r["temp"],          # 5. temp la plus haute
                         ))
