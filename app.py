@@ -73,6 +73,10 @@ div.stAlert > div { font-size: 13px; }
 </style>
 """, unsafe_allow_html=True)
 
+# ── Titre + description (toujours visibles, page d'accueil incluse) ───────────
+st.title(t["app_title"])
+st.markdown(t["app_description"])
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Fonctions utilitaires
 # ─────────────────────────────────────────────────────────────────────────────
@@ -572,7 +576,6 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
-st.title(t["app_title"])
 st.caption(
     f"{t['caption_file']} : **{uploaded.name}** · "
     f"{t['caption_separator']} : **{sep_min} min** · "
