@@ -73,10 +73,6 @@ div.stAlert > div { font-size: 13px; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Titre + description (toujours visibles, page d'accueil incluse) ───────────
-st.title(t["app_title"])
-st.markdown(t["app_description"])
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Fonctions utilitaires
 # ─────────────────────────────────────────────────────────────────────────────
@@ -278,75 +274,15 @@ def parse_file(uploaded):
     return df
 
 
-# Formats européens tentés en priorité (DD/MM/YYYY), puis inférence dayfirst
-_EU_FORMATS = [
-    "%d/%m/%Y %H:%M:%S",
-    "%d/%m/%Y %H:%M",
-    "%d/%m/%Y",
-    "%d-%m-%Y %H:%M:%S",
-    "%d-%m-%Y %H:%M",
-    "%d-%m-%Y",
-    "%d.%m.%Y %H:%M:%S",
-    "%d.%m.%Y %H:%M",
-    "%d.%m.%Y",
-    "%Y-%m-%d %H:%M:%S",
-    "%Y-%m-%d %H:%M",
-    "%Y-%m-%d",
-    "%d/%m/%y %H:%M",
-    "%d/%m/%y",
-]
-
-
-def _safe_date_str(col: "pd.Series") -> "pd.Series":
-    """Convert a date/datetime column to clean YYYY-MM-DD strings,
-    regardless of whether it is already datetime64 or raw text."""
-    if pd.api.types.is_datetime64_any_dtype(col):
-        return pd.to_datetime(col).dt.strftime("%Y-%m-%d")
-    return col.astype(str)
-
-
-def _safe_time_str(col: "pd.Series") -> "pd.Series":
-    """Convert a time column to clean HH:MM:SS strings,
-    regardless of whether it contains datetime.time objects or text."""
-    import datetime as _dt
-    first = col.dropna().iloc[0] if len(col.dropna()) > 0 else None
-    if isinstance(first, _dt.time):
-        return col.apply(
-            lambda t: t.strftime("%H:%M:%S") if isinstance(t, _dt.time) else str(t)
-        )
-    return col.astype(str)
-
-
-def _parse_series_eu(series: "pd.Series") -> "pd.Series":
-    """Try explicit EU date formats first, then fall back to dayfirst=True inference."""
-    # If already datetime64, return as-is — no re-parsing needed
-    if pd.api.types.is_datetime64_any_dtype(series):
-        return pd.to_datetime(series)
-    sample = series.dropna().astype(str)
-    for fmt in _EU_FORMATS:
-        parsed = pd.to_datetime(sample, format=fmt, errors="coerce")
-        ratio = parsed.notna().mean()
-        if ratio >= 0.9:
-            return pd.to_datetime(series.astype(str), format=fmt, errors="coerce")
-    # Fallback: let pandas infer but force dayfirst
-    return pd.to_datetime(series, dayfirst=True, errors="coerce")
-
-
 def try_parse_datetime(df, col_dt=None, col_date=None, col_time=None):
     try:
         if col_dt:
-            col = df[col_dt]
-            # If already datetime64 (e.g. from Excel), return directly
-            if pd.api.types.is_datetime64_any_dtype(col):
-                series = pd.to_datetime(col)
-            else:
-                series = _parse_series_eu(col)
+            # Correction : on retire l'argument supprimé
+            series = pd.to_datetime(df[col_dt], dayfirst=True)
         else:
-            # Robust string conversion — avoids repr() bugs on datetime.time
-            date_str = _safe_date_str(df[col_date])
-            time_str = _safe_time_str(df[col_time])
-            combined = date_str + " " + time_str
-            series = _parse_series_eu(combined)
+            combined = df[col_date].astype(str) + " " + df[col_time].astype(str)
+            # Correction : on retire l'argument supprimé
+            series = pd.to_datetime(combined, dayfirst=True)
         if series.isna().all():
             return None, "Aucune date valide reconnue."
         return series, None
@@ -430,7 +366,8 @@ with st.sidebar:
                                                        ["datetime", "date", "time", "heure"])), 0))
         col_date_sep = col_time_sep = None
         # Vérification : la colonne doit contenir une heure réelle
-        _test_dt = _parse_series_eu(raw_df[col_datetime].dropna().iloc[:10])
+        _test_dt = pd.to_datetime(raw_df[col_datetime].dropna().iloc[:10],
+                                  dayfirst=True, errors="coerce")
         if (_test_dt.dt.hour == 0).all():
             st.warning(t["warning_no_time"].format(col=col_datetime))
     else:
@@ -477,29 +414,6 @@ with st.sidebar:
     if not HAS_DIPTEST:
         st.warning(t["warning_diptest"])
 
-    # ── Colonnes environnementales (optionnel) ───────────────────────────────
-    _wind_kw = ["vent", "wind", "vitesse_v", "vit_v", "ws", "v_ms", "windspeed"]
-    _temp_kw = ["temp", "°c", "celsius", "t_air", "t_ext", "temperature"]
-    _wind_candidates = [c for c in cols if any(k in c.lower() for k in _wind_kw)]
-    _temp_candidates  = [c for c in cols if any(k in c.lower() for k in _temp_kw)]
-
-    if _wind_candidates or _temp_candidates:
-        st.subheader(t["sidebar_env"])
-        _none_opt = [t["none_option"]]
-        col_wind = st.selectbox(
-            t["wind_col_label"], _none_opt + cols,
-            index=(_none_opt + cols).index(_wind_candidates[0]) if _wind_candidates else 0,
-        )
-        col_temp = st.selectbox(
-            t["temp_col_label"], _none_opt + cols,
-            index=(_none_opt + cols).index(_temp_candidates[0]) if _temp_candidates else 0,
-        )
-        col_wind = None if col_wind == t["none_option"] else col_wind
-        col_temp  = None if col_temp  == t["none_option"] else col_temp
-    else:
-        col_wind = None
-        col_temp  = None
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Préparation des données
@@ -520,16 +434,6 @@ df_work = pd.DataFrame({
 df_work.dropna(subset=["datetime", "espece"], inplace=True)
 df_work = df_work[df_work["espece"] != ""]
 df_work["nuit_acoustique"] = df_work["datetime"].apply(acoustic_night)
-
-# Colonnes environnementales (vent, température) — alignement sur la même masque de validité
-if col_wind and col_wind in raw_df.columns:
-    df_work["vent_ms"] = pd.to_numeric(
-        raw_df[col_wind].loc[df_work.index].values, errors="coerce"
-    )
-if col_temp and col_temp in raw_df.columns:
-    df_work["temp_c"] = pd.to_numeric(
-        raw_df[col_temp].loc[df_work.index].values, errors="coerce"
-    )
 
 # Filtre période
 if apply_period and date_range and len(date_range) == 2:
@@ -576,6 +480,7 @@ n_species = len(all_species)
 # ─────────────────────────────────────────────────────────────────────────────
 # En-tête
 # ─────────────────────────────────────────────────────────────────────────────
+st.title(t["app_title"])
 st.caption(
     f"{t['caption_file']} : **{uploaded.name}** · "
     f"{t['caption_separator']} : **{sep_min} min** · "
@@ -594,14 +499,13 @@ st.divider()
 # ─────────────────────────────────────────────────────────────────────────────
 # Onglets
 # ─────────────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     t["tab_data"],
     t["tab_distribution"],
     t["tab_estimation"],
     t["tab_phenology"],
     t["tab_export"],
     t["tab_report"],
-    t["tab_bridage"],
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -652,7 +556,7 @@ with tab1:
     nightly["nuit_acoustique"] = nightly["nuit_acoustique"].astype(str)
 
     sp_filter1 = st.multiselect(
-        t["species_to_display"], all_species, default=all_species,
+        t["species_to_display"], all_species, default=all_species[:min(5, len(all_species))],
         key="sp_filter1"
     )
     nightly_f = nightly[nightly["espece"].isin(sp_filter1)] if sp_filter1 else nightly
@@ -822,7 +726,7 @@ with tab3:
     with col_l3:
         sp_filter3 = st.multiselect(
             t["species_label"], all_species,
-            default=all_species,
+            default=all_species[:min(5, len(all_species))],
             key="sp_filter3"
         )
 
@@ -1036,7 +940,7 @@ with tab4:
     st.subheader(t["tab4_subtitle_pheno"])
     sp_pheno = st.multiselect(
         t["species_label"], all_species,
-        default=all_species,
+        default=all_species[:min(4, len(all_species))],
         key="sp_pheno"
     )
     summary_pheno = summary_df[summary_df[t["col_species_display"]].isin(sp_pheno)].copy() if sp_pheno else summary_df.copy()
@@ -1190,56 +1094,6 @@ with tab6:
     st.subheader(t["tab6_title"])
     st.markdown(t["report_intro"].format(sep=sep_min))
 
-    # ── Tableau de synthèse ───────────────────────────────────────────────────
-    st.subheader(t["report_summary_title"])
-    synth_rows = []
-    total_nuits_sum = 0
-    total_ind_sum   = 0
-
-    for sp in all_species:
-        sp_data  = summary_df[summary_df[t["col_species_display"]] == sp]
-        n_nuits  = int(sp_data[t["col_night_display"]].nunique())
-        n_ind    = int(sp_data[t["col_ind_display"]].sum())
-
-        res        = test_bimodalite(get_gaps_for_species(gap_df, sp), sep_min)
-        lbl, emj, _ = verdict_bimodalite(res)   # tuple (label, emoji, detail)
-        bc_str     = f"{res['bc']:.3f}" if res["bc"] is not None else "—"
-
-        sep_ok = (t["val_yes"]      if "confirmée" in lbl else
-                  t["val_probable"] if "probable"   in lbl else
-                  t["val_no"]       if "non"        in lbl else t["val_na"])
-
-        method_applicable = sep_ok in (t["val_yes"], t["val_probable"])
-        ind_display = n_ind if method_applicable else f"{n_nuits} *"
-        ind_numeric = n_ind if method_applicable else n_nuits
-
-        total_nuits_sum += n_nuits
-        total_ind_sum   += ind_numeric
-
-        synth_rows.append({
-            t["col_species_display"]:  sp,
-            t["synth_col_nights"]:     n_nuits,
-            t["synth_col_ind"]:        ind_display,
-            t["synth_col_bc"]:         bc_str,
-            t["synth_col_bimo"]:       f"{emj} {lbl}",
-            t["synth_col_valid"]:      sep_ok,
-        })
-
-    synth_rows.append({
-        t["col_species_display"]:  f"**{t['synth_total_label']}**",
-        t["synth_col_nights"]:     f"**{total_nuits_sum}**",
-        t["synth_col_ind"]:        f"**{total_ind_sum}**",
-        t["synth_col_bc"]:         "",
-        t["synth_col_bimo"]:       "",
-        t["synth_col_valid"]:      "",
-    })
-
-    synth_df = pd.DataFrame(synth_rows)
-    st.dataframe(synth_df, use_container_width=True, hide_index=True)
-    st.caption(t["synth_caption"])
-
-    st.markdown("---")
-
     # Calculs préliminaires pour le rapport
     periode_debut = str(df_work["nuit_acoustique"].min())
     periode_fin   = str(df_work["nuit_acoustique"].max())
@@ -1331,367 +1185,6 @@ with tab6:
 
     st.markdown("---")
     st.caption(t["caption_report"])
-
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 7 — Bridage adaptatif
-# ══════════════════════════════════════════════════════════════════════════════
-with tab7:
-    st.subheader(t["tab7_title"])
-
-    has_wind = "vent_ms" in df_work.columns and df_work["vent_ms"].notna().any()
-    has_temp  = "temp_c"  in df_work.columns and df_work["temp_c"].notna().any()
-
-    if not has_wind or not has_temp:
-        st.info(t["bridage_no_cols"])
-    else:
-        st.caption(t["bridage_intro"])
-
-        # ── Définition des périodes de bridage ────────────────────────────────
-        st.markdown(f"#### {t['bridage_periods_title']}")
-        night_min = df_work["nuit_acoustique"].min()
-        night_max = df_work["nuit_acoustique"].max()
-
-        n_periods = st.number_input(
-            t["n_periods_label"], min_value=1, max_value=10, value=1, step=1
-        )
-
-        periods = []
-        for i in range(int(n_periods)):
-            with st.expander(t["period_label"].format(n=i + 1), expanded=True):
-                # ── Ligne 1 : plage calendaire ────────────────────────────────
-                pc1, pc2 = st.columns(2)
-                p_start = pc1.date_input(
-                    t["period_start"], value=night_min,
-                    min_value=night_min, max_value=night_max,
-                    key=f"br_start_{i}"
-                )
-                p_end = pc2.date_input(
-                    t["period_end"], value=night_max,
-                    min_value=night_min, max_value=night_max,
-                    key=f"br_end_{i}"
-                )
-                # ── Ligne 2 : plage horaire ───────────────────────────────────
-                ph1, ph2 = st.columns(2)
-                p_time_start = ph1.number_input(
-                    t["time_start"], min_value=0, max_value=23, value=21, step=1,
-                    help=t["time_start_help"],
-                    key=f"br_tstart_{i}"
-                )
-                p_time_end = ph2.number_input(
-                    t["time_end"], min_value=0, max_value=23, value=7, step=1,
-                    help=t["time_end_help"],
-                    key=f"br_tend_{i}"
-                )
-                # ── Ligne 3 : seuils vent & temp ──────────────────────────────
-                pw1, pw2 = st.columns(2)
-                p_wind = pw1.number_input(
-                    t["wind_threshold"], value=6.0, min_value=0.0,
-                    max_value=30.0, step=0.5, format="%.1f",
-                    help=t["wind_threshold_help"],
-                    key=f"br_wind_{i}"
-                )
-                p_temp = pw2.number_input(
-                    t["temp_threshold"], value=12.0, min_value=-10.0,
-                    max_value=40.0, step=0.5, format="%.1f",
-                    help=t["temp_threshold_help"],
-                    key=f"br_temp_{i}"
-                )
-                # Résumé lisible de la période
-                cross = p_time_start > p_time_end   # plage chevauche minuit
-                if cross:
-                    hrange = f"{p_time_start:02d}h → {p_time_end:02d}h (+1)"
-                else:
-                    hrange = f"{p_time_start:02d}h → {p_time_end:02d}h"
-                st.caption(
-                    t["period_summary"].format(
-                        start=p_start, end=p_end, hrange=hrange,
-                        wind=p_wind, temp=p_temp
-                    )
-                )
-                periods.append({
-                    "start":      p_start,
-                    "end":        p_end,
-                    "time_start": int(p_time_start),
-                    "time_end":   int(p_time_end),
-                    "wind":       p_wind,
-                    "temp":       p_temp,
-                })
-
-        # ── Calcul du masque de bridage ───────────────────────────────────────
-        def _in_time_window(dt, h_start, h_end):
-            """True si l'heure de dt est dans la plage [h_start, h_end).
-            Gère le cas minuit-chevauchant (ex. 21h → 07h)."""
-            h = dt.hour
-            if h_start <= h_end:          # plage intra-journalière : ex. 08h → 20h
-                return h_start <= h < h_end
-            else:                          # plage chevauchant minuit : ex. 21h → 07h
-                return h >= h_start or h < h_end
-
-        def _is_curtailed(row):
-            night = row["nuit_acoustique"]
-            wind  = row.get("vent_ms", float("nan"))
-            temp  = row.get("temp_c",  float("nan"))
-            if pd.isna(wind) or pd.isna(temp):
-                return False
-            dt = row["datetime"]
-            for p in periods:
-                if p["start"] <= night <= p["end"]:
-                    if (wind < p["wind"]
-                            and temp > p["temp"]
-                            and _in_time_window(dt, p["time_start"], p["time_end"])):
-                        return True
-            return False
-
-        curtailed_mask = df_work.apply(_is_curtailed, axis=1)
-        df_residual    = df_work[~curtailed_mask].copy()
-
-        # ── Métriques globales ────────────────────────────────────────────────
-        n_total     = len(df_work)
-        n_bridage   = int(curtailed_mask.sum())
-        n_residual  = len(df_residual)
-        pct_bridage = n_bridage / n_total * 100 if n_total else 0
-
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric(t["metric_contacts"],        f"{n_total:,}")
-        m2.metric(t["metric_curtailed"],       f"{n_bridage:,}",
-                  delta=f"{pct_bridage:.1f} %", delta_color="normal")
-        m3.metric(t["metric_residual"],        f"{n_residual:,}",
-                  delta=f"{100 - pct_bridage:.1f} %", delta_color="inverse")
-        m4.metric(t["metric_species"],         f"{n_species}")
-
-        st.divider()
-
-        if df_residual.empty:
-            st.success(t["bridage_all_protected"])
-        else:
-            # ── Tableau résiduel par espèce ───────────────────────────────────
-            st.markdown(f"#### {t['residual_by_species_title']}")
-
-            # Re-calculer summary sur données résiduelles
-            residual_summary = build_summary(df_residual, sep_min)
-            residual_summary = residual_summary.rename(columns={
-                "Nuit acoustique":  t["col_night_display"],
-                "Espèce":           t["col_species_display"],
-                "Contacts":         t["col_contacts"],
-                "Individus estimés": t["col_ind_display"],
-            })
-
-            res_rows = []
-            for sp in all_species:
-                tot_sp  = len(df_work[df_work["espece"] == sp])
-                res_sp  = df_residual[df_residual["espece"] == sp]
-                n_res_c = len(res_sp)
-                pct_res = n_res_c / tot_sp * 100 if tot_sp else 0
-
-                sp_res_sum = residual_summary[
-                    residual_summary[t["col_species_display"]] == sp
-                ]
-                n_res_ind  = int(sp_res_sum[t["col_ind_display"]].sum()) if not sp_res_sum.empty else 0
-
-                # Vérifier si bimodalité valide pour cette espèce
-                res_bm   = test_bimodalite(get_gaps_for_species(gap_df, sp), sep_min)
-                lbl_bm, _, _ = verdict_bimodalite(res_bm)
-                ind_valid = "confirmée" in lbl_bm or "probable" in lbl_bm
-
-                res_rows.append({
-                    t["col_species_display"]:   sp,
-                    t["col_residual_contacts"]: n_res_c,
-                    t["col_total_contacts_br"]: tot_sp,
-                    t["col_pct_residual"]:      f"{pct_res:.1f} %",
-                    t["col_residual_ind"]:      n_res_ind if ind_valid else f"{sp_res_sum[t['col_night_display']].nunique() if not sp_res_sum.empty else 0} *",
-                })
-
-            res_df = pd.DataFrame(res_rows)
-            st.dataframe(res_df, use_container_width=True, hide_index=True)
-            st.caption(t["bridage_table_caption"])
-
-            # ── Graphique résiduel par nuit ───────────────────────────────────
-            if not residual_summary.empty:
-                st.markdown(f"#### {t['residual_chart_title']}")
-                nightly_res = (
-                    df_residual.groupby(["nuit_acoustique", "espece"])
-                    .size().reset_index(name="contacts")
-                    .rename(columns={
-                        "nuit_acoustique": t["col_night_display"],
-                        "espece":          t["col_species_display"],
-                        "contacts":        t["col_contacts"],
-                    })
-                )
-                nightly_res[t["col_night_display"]] = (
-                    nightly_res[t["col_night_display"]].astype(str)
-                )
-                fig_res = px.bar(
-                    nightly_res,
-                    x=t["col_night_display"], y=t["col_contacts"],
-                    color=t["col_species_display"],
-                    color_discrete_map=species_color,
-                    labels={
-                        t["col_night_display"]: t["col_night_display"],
-                        t["col_contacts"]:       t["col_contacts"],
-                    },
-                    height=340,
-                )
-                fig_res.update_layout(bargap=0.1, plot_bgcolor="rgba(0,0,0,0)")
-                st.plotly_chart(fig_res, use_container_width=True)
-
-                # ── Individus résiduels estimés par nuit ──────────────────────
-                st.markdown(f"#### {t['residual_ind_title']}")
-                sp_filter_res = st.multiselect(
-                    t["species_label"], all_species,
-                    default=all_species, key="sp_filter_res"
-                )
-                res_sum_f = residual_summary[
-                    residual_summary[t["col_species_display"]].isin(sp_filter_res)
-                ] if sp_filter_res else residual_summary
-                res_sum_f = res_sum_f.copy()
-                res_sum_f[t["col_night_display"]] = res_sum_f[t["col_night_display"]].astype(str)
-
-                fig_res_ind = px.bar(
-                    res_sum_f,
-                    x=t["col_night_display"], y=t["col_ind_display"],
-                    color=t["col_species_display"],
-                    color_discrete_map=species_color,
-                    labels={t["col_night_display"]: t["col_night_display"]},
-                    height=340,
-                )
-                fig_res_ind.update_layout(bargap=0.1, plot_bgcolor="rgba(0,0,0,0)")
-                st.plotly_chart(fig_res_ind, use_container_width=True)
-                st.caption(t["bridage_ind_caption"])
-
-        st.markdown("---")
-        # ── Optimisation du plan de bridage ──────────────────────────────────
-        with st.expander(t["optim_title"], expanded=False):
-            st.markdown(t["optim_intro"])
-            oc1, oc2 = st.columns([1, 2])
-            target_pct = oc1.number_input(
-                t["optim_target_pct"], min_value=1.0, max_value=30.0,
-                value=10.0, step=1.0, format="%.0f"
-            )
-            run_optim = oc2.button(t["optim_run"], use_container_width=True)
-
-            if run_optim:
-                # ── Grille de paramètres (vent ≤ 8 m/s) ─────────────────────
-                WIND_GRID = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
-                TEMP_GRID = [6.0, 8.0, 10.0, 12.0, 14.0, 16.0]
-                TS_GRID   = [19, 20, 21, 22]
-                TE_GRID   = [4, 5, 6, 7, 8]
-
-                # ── Comptage rapide des individus résiduels ───────────────────
-                def _count_residual_ind(df_residual, sep_min_val):
-                    """Applique la méthode du séparateur aux contacts résiduels."""
-                    if len(df_residual) == 0:
-                        return 0
-                    total = 0
-                    for (_, _), grp in df_residual.groupby(
-                            ["espece", "nuit_acoustique"], sort=False):
-                        times = grp["datetime"].sort_values().values
-                        n_ind = 1
-                        for k in range(1, len(times)):
-                            gap = (times[k] - times[k - 1]) / np.timedelta64(1, "m")
-                            if gap > sep_min_val:
-                                n_ind += 1
-                        total += n_ind
-                    return total
-
-                for pi, p in enumerate(periods):
-                    st.markdown(f"#### {t['optim_period_title'].format(n=pi+1, start=p['start'], end=p['end'])}")
-
-                    df_p = df_work[
-                        (df_work["nuit_acoustique"] >= p["start"]) &
-                        (df_work["nuit_acoustique"] <= p["end"]) &
-                        df_work["vent_ms"].notna() &
-                        df_work["temp_c"].notna()
-                    ].copy()
-                    n_total = len(df_p)
-                    if n_total == 0:
-                        st.info(t["optim_no_contacts"])
-                        continue
-
-                    # Pré-trier pour accélérer le groupby interne
-                    df_p = df_p.sort_values(["espece", "nuit_acoustique", "datetime"])
-                    hour      = df_p["datetime"].dt.hour.values
-                    w_vals    = df_p["vent_ms"].values
-                    temp_vals = df_p["temp_c"].values
-                    n_total_ind = _count_residual_ind(df_p, sep_min)  # baseline
-
-                    results = []
-                    prog = st.progress(0, text=t["optim_progress"])
-                    n_combos = len(WIND_GRID) * len(TEMP_GRID) * len(TS_GRID) * len(TE_GRID)
-                    combo_i  = 0
-
-                    for w in WIND_GRID:
-                        m_wind = w_vals < w
-                        for tmp in TEMP_GRID:
-                            m_temp = temp_vals > tmp
-                            for ts in TS_GRID:
-                                for te in TE_GRID:
-                                    if ts <= te:
-                                        m_time = (hour >= ts) & (hour < te)
-                                    else:
-                                        m_time = (hour >= ts) | (hour < te)
-                                    m_curtailed = m_wind & m_temp & m_time
-                                    df_res = df_p[~m_curtailed]
-                                    n_res      = len(df_res)
-                                    pct_res    = round(n_res / n_total * 100, 1)
-                                    n_ind_res  = _count_residual_ind(df_res, sep_min)
-                                    pct_ind    = round(n_ind_res / max(n_total_ind, 1) * 100, 1)
-                                    n_curtailed = n_total - n_res
-                                    win_w = (te - ts) % 24
-                                    effort = win_w - (tmp / 4)
-                                    results.append({
-                                        "wind": w, "temp": tmp, "ts": ts, "te": te,
-                                        "n_res": n_res, "pct_res": pct_res,
-                                        "n_ind_res": n_ind_res, "pct_ind": pct_ind,
-                                        "n_curtailed": n_curtailed,
-                                        "pct_curtailed": round(n_curtailed / n_total * 100, 1),
-                                        "win_w": win_w, "effort": effort,
-                                    })
-                                    combo_i += 1
-                                    prog.progress(combo_i / n_combos,
-                                                  text=t["optim_progress"])
-                    prog.empty()
-
-                    # ── Tri priorité : individus résiduels → % contacts → vent ↓ → effort ↓
-                    valid = [r for r in results if r["pct_res"] <= target_pct]
-
-                    if valid:
-                        valid.sort(key=lambda r: (
-                            r["n_ind_res"],      # 1. minimiser individus résiduels
-                            r["pct_res"],        # 2. minimiser % contacts résiduels
-                            -r["wind"],          # 3. vent le plus élevé (≤ 8)
-                            r["effort"],         # 4. fenêtre la moins large
-                            -r["temp"],          # 5. temp la plus haute
-                        ))
-                        st.success(t["optim_found"].format(n=len(valid), target=target_pct))
-                        top = valid[:5]
-                    else:
-                        results_sorted = sorted(results, key=lambda r: (
-                            r["n_ind_res"], r["pct_res"], -r["wind"], r["effort"]
-                        ))
-                        top = results_sorted[:5]
-                        st.warning(t["optim_not_found"].format(
-                            best=top[0]["pct_res"], target=target_pct
-                        ))
-
-                    rows = []
-                    for j, r in enumerate(top):
-                        cross = r["ts"] > r["te"]
-                        hrange = f"{r['ts']:02d}h – {r['te']:02d}h" + (" (+1j)" if cross else "")
-                        highlight = "⭐ " if j == 0 else ""
-                        rows.append({
-                            "#":                            f"{highlight}{j+1}",
-                            t["wind_threshold"]:            f"≤ {r['wind']:.1f} m/s",
-                            t["temp_threshold"]:            f"≥ {r['temp']:.0f} °C",
-                            t["optim_col_window"]:          hrange,
-                            t["col_residual_ind"]:          f"{r['n_ind_res']} ({r['pct_ind']} %)",
-                            t["col_residual_contacts"]:     f"{r['n_res']} ({r['pct_res']} %)",
-                            t["optim_col_curtailed_pct"]:   f"{r['pct_curtailed']} %",
-                        })
-                    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
-                    st.caption(t["optim_table_caption"])
-
 
 # ── Crédit auteur ─────────────────────────────────────────────────────────────
 st.markdown(
