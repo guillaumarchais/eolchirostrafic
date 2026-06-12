@@ -6,6 +6,16 @@ LANGUAGES = {
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Séparateur d'individus — Chiroptères",
         "app_title": "🦇 Séparateur d'individus — Acoustique chiroptères",
+        "app_description": (
+            "Cette application estime le **nombre d'individus distincts** de chauves-souris à partir "
+            "de données d'enregistrement acoustique automatique, en appliquant la **méthode du séparateur** "
+            "(Seebens-Hoyer et al., 2026) : deux contacts séparés par plus de N minutes sont attribués à des "
+            "individus différents. Elle teste la **bimodalité** de la distribution des intervalles "
+            "(Bimodality Coefficient + Dip test de Hartigan) pour valider l'applicabilité de la méthode par espèce, "
+            "propose une **vue phénologique**, un **rapport rédactionnel** prêt à intégrer dans une étude d'impact, "
+            "et un module **bridage adaptatif** pour optimiser les seuils vent/température/horaires en fonction "
+            "de l'activité résiduelle des chauves-souris."
+        ),
         "author_credit": "Application conçue par Guillaume Marchais",
 
         # ── Sidebar ───────────────────────────────────────────────────────────
@@ -471,6 +481,15 @@ LANGUAGES = {
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Bat Individual Separator — Acoustic Monitoring",
         "app_title": "🦇 Bat Individual Separator — Acoustic Monitoring",
+        "app_description": (
+            "This application estimates the **number of distinct bat individuals** from automatic acoustic "
+            "recording data, using the **separator method** (Seebens-Hoyer et al., 2026): two passes separated "
+            "by more than N minutes are attributed to different individuals. It tests the **bimodality** of the "
+            "inter-pass interval distribution (Bimodality Coefficient + Hartigan's Dip test) to validate the "
+            "method's applicability per species, provides a **phenological view**, a ready-to-use **report text** "
+            "for environmental impact assessments, and an **adaptive curtailment** module to optimise wind/"
+            "temperature/time thresholds based on residual bat activity."
+        ),
         "author_credit": "Application designed by Guillaume Marchais",
 
         # ── Sidebar ───────────────────────────────────────────────────────────
