@@ -1362,11 +1362,13 @@ with tab7:
                 p_start = pc1.date_input(
                     t["period_start"], value=night_min,
                     min_value=night_min, max_value=night_max,
+                    format="DD/MM/YYYY",
                     key=f"br_start_{i}"
                 )
                 p_end = pc2.date_input(
                     t["period_end"], value=night_max,
                     min_value=night_min, max_value=night_max,
+                    format="DD/MM/YYYY",
                     key=f"br_end_{i}"
                 )
                 # ── Ligne 2 : plage horaire ───────────────────────────────────
@@ -1403,7 +1405,9 @@ with tab7:
                     hrange = f"{p_time_start:02d}h → {p_time_end:02d}h"
                 st.caption(
                     t["period_summary"].format(
-                        start=p_start, end=p_end, hrange=hrange,
+                        start=p_start.strftime("%d/%m/%Y"),
+                        end=p_end.strftime("%d/%m/%Y"),
+                        hrange=hrange,
                         wind=p_wind, temp=p_temp
                     )
                 )
@@ -1601,7 +1605,7 @@ with tab7:
                     return total
 
                 for pi, p in enumerate(periods):
-                    st.markdown(f"#### {t['optim_period_title'].format(n=pi+1, start=p['start'], end=p['end'])}")
+                    st.markdown(f"#### {t['optim_period_title'].format(n=pi+1, start=pd.Timestamp(p['start']).strftime('%d/%m/%Y'), end=pd.Timestamp(p['end']).strftime('%d/%m/%Y'))}")
 
                     _nuit_ts = pd.to_datetime(df_work["nuit_acoustique"])
                     _ps = pd.Timestamp(p["start"])
