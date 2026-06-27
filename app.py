@@ -1347,8 +1347,8 @@ with tab7:
 
         # ── Définition des périodes de bridage ────────────────────────────────
         st.markdown(f"#### {t['bridage_periods_title']}")
-        night_min = df_work["nuit_acoustique"].min()
-        night_max = df_work["nuit_acoustique"].max()
+        night_min = pd.Timestamp(df_work["nuit_acoustique"].min()).date()
+        night_max = pd.Timestamp(df_work["nuit_acoustique"].max()).date()
 
         n_periods = st.number_input(
             t["n_periods_label"], min_value=1, max_value=10, value=1, step=1
@@ -1426,15 +1426,23 @@ with tab7:
             else:                          # plage chevauchant minuit : ex. 21h → 07h
                 return h >= h_start or h < h_end
 
+        # Pré-calculer les Timestamps de chaque période pour les comparaisons
+        _periods_ts = [
+            {**p,
+             "start_ts": pd.Timestamp(p["start"]),
+             "end_ts":   pd.Timestamp(p["end"])}
+            for p in periods
+        ]
+
         def _is_curtailed(row):
-            night = row["nuit_acoustique"]
+            night_ts = pd.Timestamp(row["nuit_acoustique"])
             wind  = row.get("vent_ms", float("nan"))
             temp  = row.get("temp_c",  float("nan"))
             if pd.isna(wind) or pd.isna(temp):
                 return False
             dt = row["datetime"]
-            for p in periods:
-                if p["start"] <= night <= p["end"]:
+            for p in _periods_ts:
+                if p["start_ts"] <= night_ts <= p["end_ts"]:
                     if (wind < p["wind"]
                             and temp > p["temp"]
                             and _in_time_window(dt, p["time_start"], p["time_end"])):
@@ -1595,9 +1603,12 @@ with tab7:
                 for pi, p in enumerate(periods):
                     st.markdown(f"#### {t['optim_period_title'].format(n=pi+1, start=p['start'], end=p['end'])}")
 
+                    _nuit_ts = pd.to_datetime(df_work["nuit_acoustique"])
+                    _ps = pd.Timestamp(p["start"])
+                    _pe = pd.Timestamp(p["end"])
                     df_p = df_work[
-                        (df_work["nuit_acoustique"] >= p["start"]) &
-                        (df_work["nuit_acoustique"] <= p["end"]) &
+                        (_nuit_ts >= _ps) &
+                        (_nuit_ts <= _pe) &
                         df_work["vent_ms"].notna() &
                         df_work["temp_c"].notna()
                     ].copy()
