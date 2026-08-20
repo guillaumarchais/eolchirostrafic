@@ -402,6 +402,7 @@ with st.sidebar:
     _has_date_col = any("date" in c.lower() for c in cols)
     _has_datetime_col = any(
         any(k in c.lower() for k in ["datetime", "date_heure", "dateheure", "timestamp"])
+        or ("date" in c.lower() and any(k in c.lower() for k in ["heure", "time"]))
         for c in cols
     )
     _auto_mode = (
@@ -421,10 +422,15 @@ with st.sidebar:
     )
 
     if dt_mode == t["dt_mode_single"]:
-        col_datetime = st.selectbox(t["col_datetime_label"], cols,
-                                    index=next((i for i, c in enumerate(cols)
-                                                if any(k in c.lower() for k in
-                                                       ["datetime", "date", "time", "heure"])), 0))
+        # Priorité : colonne combinant date+heure ("dateheure", "datetime", "timestamp")
+        # avant une simple colonne "date" ou "heure"
+        _dt_combined_kw  = ["dateheure", "date_heure", "datetime", "timestamp"]
+        _dt_fallback_kw  = ["date", "time", "heure"]
+        _dt_default_idx  = next(
+            (i for i, c in enumerate(cols) if any(k in c.lower() for k in _dt_combined_kw)),
+            next((i for i, c in enumerate(cols) if any(k in c.lower() for k in _dt_fallback_kw)), 0)
+        )
+        col_datetime = st.selectbox(t["col_datetime_label"], cols, index=_dt_default_idx)
         col_date_sep = col_time_sep = None
         # Vérification : la colonne doit contenir une heure réelle
         _test_dt = _parse_series_eu(raw_df[col_datetime].dropna().iloc[:10])
