@@ -1426,40 +1426,31 @@ with tab7:
                     "temp":       p_temp,
                 })
 
-        # ── Calcul du masque de bridage ───────────────────────────────────────
-        def _in_time_window(dt, h_start, h_end):
-            """True si l'heure de dt est dans la plage [h_start, h_end).
-            Gère le cas minuit-chevauchant (ex. 21h → 07h)."""
-            h = dt.hour
-            if h_start <= h_end:          # plage intra-journalière : ex. 08h → 20h
-                return h_start <= h < h_end
-            else:                          # plage chevauchant minuit : ex. 21h → 07h
-                return h >= h_start or h < h_end
+        # ── Calcul du masque de bridage (vectorisé) ──────────────────────────
+        # Pré-calcul des séries utilisées dans toutes les périodes
+        _nuit_dt64 = pd.to_datetime(df_work["nuit_acoustique"])  # datetime64
+        _hour      = df_work["datetime"].dt.hour                  # int series
+        _has_w     = "vent_ms" in df_work.columns
+        _has_t     = "temp_c"  in df_work.columns
+        _w_series  = df_work["vent_ms"] if _has_w else pd.Series(float("nan"), index=df_work.index)
+        _t_series  = df_work["temp_c"]  if _has_t else pd.Series(float("nan"), index=df_work.index)
 
-        # Pré-calculer les Timestamps de chaque période pour les comparaisons
-        _periods_ts = [
-            {**p,
-             "start_ts": pd.Timestamp(p["start"]),
-             "end_ts":   pd.Timestamp(p["end"])}
-            for p in periods
-        ]
+        curtailed_mask = pd.Series(False, index=df_work.index)
 
-        def _is_curtailed(row):
-            night_ts = pd.Timestamp(row["nuit_acoustique"])
-            wind  = row.get("vent_ms", float("nan"))
-            temp  = row.get("temp_c",  float("nan"))
-            if pd.isna(wind) or pd.isna(temp):
-                return False
-            dt = row["datetime"]
-            for p in _periods_ts:
-                if p["start_ts"] <= night_ts <= p["end_ts"]:
-                    if (wind < p["wind"]
-                            and temp > p["temp"]
-                            and _in_time_window(dt, p["time_start"], p["time_end"])):
-                        return True
-            return False
+        for p in periods:
+            _ps = pd.Timestamp(p["start"])
+            _pe = pd.Timestamp(p["end"])
+            ts, te = int(p["time_start"]), int(p["time_end"])
 
-        curtailed_mask = df_work.apply(_is_curtailed, axis=1)
+            m_date = (_nuit_dt64 >= _ps) & (_nuit_dt64 <= _pe)
+            m_wind = _w_series.notna() & (_w_series < p["wind"])
+            m_temp = _t_series.notna() & (_t_series > p["temp"])
+            if ts <= te:                        # plage intra-journalière
+                m_time = (_hour >= ts) & (_hour < te)
+            else:                               # plage chevauchant minuit
+                m_time = (_hour >= ts) | (_hour < te)
+
+            curtailed_mask |= (m_date & m_wind & m_temp & m_time)
         df_residual    = df_work[~curtailed_mask].copy()
 
         # ── Métriques globales ────────────────────────────────────────────────
