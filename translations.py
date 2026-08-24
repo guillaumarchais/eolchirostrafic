@@ -376,13 +376,14 @@ LANGUAGES = {
             "Meilleur résultat obtenu : {best} % résiduel. "
             "Les 5 scénarios les moins contraignants sont présentés ci-dessous :"
         ),
+        "optim_col_ok": "Objectif",
         "optim_col_window": "Plage horaire",
         "optim_col_curtailed_pct": "Taux de bridage",
         "optim_progress": "Calcul des scénarios en cours…",
         "optim_table_caption": (
-            "Colonnes triées par priorité : individus résiduels (↑ critique), puis % contacts résiduels, "
-            "puis vent le plus élevé (production maximisée), puis fenêtre la plus étroite, puis temp la plus haute. "
-            "⭐ = meilleur compromis protection/production."
+            "Une ligne par palier de vent (8 → 5 m/s) : meilleure combinaison température + plage horaire pour ce seuil. "
+            "✅ = objectif atteint. ⭐ = seuil de vent le plus élevé atteignant l'objectif "
+            "(minimise les pertes de production). Plage horaire : hh – hh (+1j) = chevauchant minuit."
         ),
         "time_start": "Heure début (h)",
         "time_start_help": "Heure de début du bridage (incluse). Ex : 21 = à partir de 21h00.",
@@ -845,13 +846,14 @@ LANGUAGES = {
             "Best result: {best}% residual. "
             "The 5 least restrictive scenarios are shown below:"
         ),
+        "optim_col_ok": "Target",
         "optim_col_window": "Time window",
         "optim_col_curtailed_pct": "Curtailment rate",
         "optim_progress": "Computing scenarios…",
         "optim_table_caption": (
-            "Columns sorted by priority: residual individuals (↑ critical), then residual contact %, "
-            "then highest wind threshold (maximising production), then narrowest window, then highest temp. "
-            "⭐ = best protection/production trade-off."
+            "One row per wind level (8 → 5 m/s): best temperature + time window for that threshold. "
+            "✅ = target achieved. ⭐ = highest wind threshold achieving the target "
+            "(minimises production loss). Time window: hh – hh (+1d) = spanning midnight."
         ),
         "time_start": "Start time (h)",
         "time_start_help": "Curtailment start hour (inclusive). E.g. 21 = from 21:00.",
