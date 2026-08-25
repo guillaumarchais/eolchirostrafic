@@ -1705,9 +1705,9 @@ with tab7:
                     for j, r in enumerate(top):
                         cross  = r["ts"] > r["te"]
                         hrange = f"{r['ts']:02d}h – {r['te']:02d}h" + (" (+1j)" if cross else "")
-                        # ⭐ = meilleur global (vent le plus élevé atteignant l'objectif)
+                        # ⭐ = meilleur global (vent le moins élevé atteignant l'objectif)
                         if achieved:
-                            best_wind = max(r2["wind"] for r2 in top
+                            best_wind = min(r2["wind"] for r2 in top
                                            if r2["pct_res"] <= target_pct)
                             star = r["wind"] == best_wind and r == top[j]
                         else:
