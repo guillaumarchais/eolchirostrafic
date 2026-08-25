@@ -382,7 +382,7 @@ LANGUAGES = {
         "optim_progress": "Calcul des scénarios en cours…",
         "optim_table_caption": (
             "Une ligne par palier de vent (8 → 5 m/s) : meilleure combinaison température + plage horaire pour ce seuil. "
-            "✅ = objectif atteint. ⭐ = seuil de vent le plus élevé atteignant l'objectif "
+            "✅ = objectif atteint. ⭐ = seuil de vent le moins élevé atteignant l'objectif "
             "(minimise les pertes de production). Plage horaire : hh – hh (+1j) = chevauchant minuit."
         ),
         "time_start": "Heure début (h)",
@@ -852,7 +852,7 @@ LANGUAGES = {
         "optim_progress": "Computing scenarios…",
         "optim_table_caption": (
             "One row per wind level (8 → 5 m/s): best temperature + time window for that threshold. "
-            "✅ = target achieved. ⭐ = highest wind threshold achieving the target "
+            "✅ = target achieved. ⭐ = lowest wind threshold achieving the target "
             "(minimises production loss). Time window: hh – hh (+1d) = spanning midnight."
         ),
         "time_start": "Start time (h)",
