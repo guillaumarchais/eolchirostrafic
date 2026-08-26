@@ -1694,36 +1694,71 @@ with tab7:
                         pool = results
                         achieved = False
 
-                    # Un meilleur scénario par palier de vent (décroissant : 8 → 5)
-                    top = []
-                    for wv in sorted(WIND_GRID, reverse=True):
-                        best = _best_for_wind(pool, wv)
-                        if best:
-                            top.append(best)
+                    # ── ⭐ = vent MINIMUM atteignant l'objectif (moins de bridage) ─
+                    min_achieving_wind = (
+                        min(r["wind"] for r in results if r["pct_res"] <= target_pct)
+                        if achieved else None
+                    )
+                    # Vent de référence pour groupes 2 & 3
+                    ref_wind = min_achieving_wind if min_achieving_wind else min(WIND_GRID)
 
-                    rows = []
-                    for j, r in enumerate(top):
+                    # ── GROUPE 1 : 5 paliers de vent (8 → 5), meilleur temp+heure ──
+                    wind_levels_g1 = sorted(WIND_GRID, reverse=True)[:5]
+                    group1 = []
+                    for wv in wind_levels_g1:
+                        best = _best_for_wind(results, wv)
+                        if best:
+                            group1.append(best)
+
+                    # ── GROUPE 2 : 3 plages horaires, vent=ref_wind, meilleure temp ──
+                    ref_results = [r for r in results if r["wind"] == ref_wind]
+                    ref_best_temp = sorted(ref_results,
+                                           key=lambda r: (r["n_ind_res"], r["pct_res"],
+                                                          r["effort"], -r["temp"]))[0]["temp"]
+                    ref_temp_results = [r for r in ref_results if r["temp"] == ref_best_temp]
+                    group2, seen_tw = [], set()
+                    for r in sorted(ref_temp_results,
+                                    key=lambda r: (r["n_ind_res"], r["pct_res"], r["effort"])):
+                        if (r["ts"], r["te"]) not in seen_tw:
+                            group2.append(r)
+                            seen_tw.add((r["ts"], r["te"]))
+                        if len(group2) == 3:
+                            break
+
+                    # ── GROUPE 3 : 2 températures, vent=ref_wind, meilleure plage ──
+                    ref_ts = group2[0]["ts"] if group2 else TS_GRID[0]
+                    ref_te = group2[0]["te"] if group2 else TE_GRID[0]
+                    ref_tw_results = [r for r in ref_results
+                                      if r["ts"] == ref_ts and r["te"] == ref_te
+                                      and r["temp"] != ref_best_temp]
+                    group3 = sorted(ref_tw_results,
+                                    key=lambda r: (r["n_ind_res"], r["pct_res"], -r["temp"]))[:2]
+
+                    # ── Affichage des 3 groupes ────────────────────────────────────
+                    def _make_row(r, group_label, star=False):
                         cross  = r["ts"] > r["te"]
                         hrange = f"{r['ts']:02d}h – {r['te']:02d}h" + (" (+1j)" if cross else "")
-                        # ⭐ = meilleur global (vent le moins élevé atteignant l'objectif)
-                        if achieved:
-                            best_wind = min(r2["wind"] for r2 in top
-                                           if r2["pct_res"] <= target_pct)
-                            star = r["wind"] == best_wind and r == top[j]
-                        else:
-                            star = j == 0
-                        mark = "⭐ " if star else ""
-                        # Indicateur visuel si ce palier atteint l'objectif
                         ok_mark = "✅" if r["pct_res"] <= target_pct else "❌"
-                        rows.append({
+                        return {
+                            t["optim_col_group"]:           group_label,
                             t["optim_col_ok"]:              ok_mark,
                             t["wind_threshold"]:            f"≤ {r['wind']:.1f} m/s",
                             t["temp_threshold"]:            f"≥ {r['temp']:.0f} °C",
-                            t["optim_col_window"]:          f"{mark}{hrange}",
+                            t["optim_col_window"]:          ("⭐ " if star else "") + hrange,
                             t["col_residual_ind"]:          f"{r['n_ind_res']} ({r['pct_ind']} %)",
                             t["col_residual_contacts"]:     f"{r['n_res']} ({r['pct_res']} %)",
                             t["optim_col_curtailed_pct"]:   f"{r['pct_curtailed']} %",
-                        })
+                        }
+
+                    rows = []
+                    for r in group1:
+                        star = achieved and r["wind"] == min_achieving_wind
+                        rows.append(_make_row(r, t["optim_grp_wind"], star=star))
+                    for r in group2:
+                        rows.append(_make_row(r, t["optim_grp_time"]))
+                    for r in group3:
+                        rows.append(_make_row(r, t["optim_grp_temp"]))
+
                     st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
                     st.caption(t["optim_table_caption"])
 
