@@ -1718,13 +1718,30 @@ with tab7:
                         pool = results
                         achieved = False
 
-                    # ── ⭐ = vent MINIMUM atteignant l'objectif (moins de bridage) ─
-                    min_achieving_wind = (
-                        min(r["wind"] for r in results if r["pct_res"] <= target_pct)
-                        if achieved else None
-                    )
-                    # Vent de référence pour groupes 2 & 3
-                    ref_wind = min_achieving_wind if min_achieving_wind else min(WIND_GRID)
+                    # ── ⭐ : vent minimal + temp maximale + plage la plus courte ──
+                    # Parmi les scénarios atteignant l'objectif, on cherche la combinaison
+                    # la moins contraignante sur les 3 critères à la fois :
+                    #   1. vent le plus bas (turbines bridées moins souvent)
+                    #   2. température la plus haute (moins de nuits concernées)
+                    #   3. plage horaire la plus courte (moins d'heures concernées)
+                    if achieved:
+                        star_scenario = sorted(
+                            [r for r in results if r["pct_res"] <= target_pct],
+                            key=lambda r: (r["wind"], -r["temp"], r["win_w"])
+                        )[0]
+                    else:
+                        star_scenario = None  # aucun objectif atteint → pas d'étoile
+
+                    def _is_star(r):
+                        """True si ce scénario correspond au scénario optimal."""
+                        return (star_scenario is not None
+                                and r["wind"] == star_scenario["wind"]
+                                and r["temp"] == star_scenario["temp"]
+                                and r["ts"]   == star_scenario["ts"]
+                                and r["te"]   == star_scenario["te"])
+
+                    # Vent de référence pour groupes 2 & 3 = vent du scénario optimal
+                    ref_wind = star_scenario["wind"] if star_scenario else min(WIND_GRID)
 
                     # ── GROUPE 1 : 5 paliers de vent (8 → 5), meilleur temp+heure ──
                     wind_levels_g1 = sorted(WIND_GRID, reverse=True)[:5]
@@ -1776,12 +1793,11 @@ with tab7:
 
                     rows = []
                     for r in group1:
-                        star = achieved and r["wind"] == min_achieving_wind
-                        rows.append(_make_row(r, t["optim_grp_wind"], star=star))
+                        rows.append(_make_row(r, t["optim_grp_wind"], star=_is_star(r)))
                     for r in group2:
-                        rows.append(_make_row(r, t["optim_grp_time"]))
+                        rows.append(_make_row(r, t["optim_grp_time"], star=_is_star(r)))
                     for r in group3:
-                        rows.append(_make_row(r, t["optim_grp_temp"]))
+                        rows.append(_make_row(r, t["optim_grp_temp"], star=_is_star(r)))
 
                     st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
                     st.caption(t["optim_table_caption"])
