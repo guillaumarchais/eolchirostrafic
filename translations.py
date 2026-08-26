@@ -389,7 +389,7 @@ LANGUAGES = {
             "🌬️ 5 paliers de vent (8→5 m/s, meilleure temp+heure pour chacun) ; "
             "🕐 3 plages horaires au vent de référence (temp optimale) ; "
             "🌡️ 2 températures au vent de référence (meilleure plage horaire). "
-            "✅ = objectif atteint. ⭐ = vent MINIMUM atteignant l'objectif (bridage minimal → production maximisée)."
+            "✅ = objectif atteint. ⭐ = combinaison optimale : vent le plus bas + température la plus haute + plage horaire la plus courte parmi les scénarios atteignant l'objectif."
         ),
         "time_start": "Heure début (h)",
         "time_start_help": "Heure de début du bridage (incluse). Ex : 21 = à partir de 21h00.",
@@ -865,7 +865,7 @@ LANGUAGES = {
             "🌬️ 5 wind levels (8→5 m/s, best temp+window for each); "
             "🕐 3 time windows at reference wind (optimal temp); "
             "🌡️ 2 temperatures at reference wind (best time window). "
-            "✅ = target achieved. ⭐ = MINIMUM wind achieving target (least curtailment → maximum production)."
+            "✅ = target achieved. ⭐ = optimal combination: lowest wind + highest temperature + shortest time window among scenarios achieving the target."
         ),
         "time_start": "Start time (h)",
         "time_start_help": "Curtailment start hour (inclusive). E.g. 21 = from 21:00.",
