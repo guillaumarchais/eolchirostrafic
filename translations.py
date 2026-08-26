@@ -1,7 +1,7 @@
 # translations.py
 
 LANGUAGES = {
-    "FR": {
+    "FR": {t
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Séparateur d'individus — Chiroptères",
@@ -370,7 +370,7 @@ LANGUAGES = {
         "optim_run": "▶  Calculer les scénarios optimaux",
         "optim_period_title": "Période {n} — {start} → {end}",
         "optim_no_contacts": "Aucun contact avec données vent/temp sur cette période.",
-        "optim_found": "{n} scénario(s) atteignant l'objectif (≤ {target} % résiduel). Les 5 moins contraignants :",
+        "optim_found": "{n} scénario(s) atteignant l'objectif (≤ {target} % résiduel). Les 10 moins contraignants :",
         "optim_not_found": (
             "⚠️ Aucun scénario avec vent ≤ 8 m/s n'atteint l'objectif. "
             "Meilleur résultat obtenu : {best} % résiduel. "
@@ -846,7 +846,7 @@ LANGUAGES = {
         "optim_run": "▶  Calculate optimal scenarios",
         "optim_period_title": "Period {n} — {start} → {end}",
         "optim_no_contacts": "No contacts with wind/temp data for this period.",
-        "optim_found": "{n} scenario(s) achieving the target (≤ {target}% residual). The 5 least restrictive:",
+        "optim_found": "{n} scenario(s) achieving the target (≤ {target}% residual). The 10 least restrictive:",
         "optim_not_found": (
             "⚠️ No scenario with wind ≤ 8 m/s achieves the target. "
             "Best result: {best}% residual. "
