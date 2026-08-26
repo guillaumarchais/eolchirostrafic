@@ -38,6 +38,30 @@ selected_lang = st.sidebar.selectbox("🌐 Langue / Language", ["Français", "Sc
 L = "FR" if selected_lang == "Français" else "EN"
 t = LANGUAGES[L]
 
+# ── Patch de rétro-compatibilité : clés absentes des anciennes versions ───────
+# Garantit le fonctionnement même si translations.py n'a pas encore été mis à jour.
+_PATCHES = {
+    "FR": {
+        "optim_grp_wind":  "🌬️ Vent",
+        "optim_grp_time":  "🕐 Horaire",
+        "optim_grp_temp":  "🌡️ Température",
+        "optim_col_group": "Paramètre varié",
+        "optim_col_ok":    "Objectif",
+        "optim_progress":  "Calcul des scénarios en cours…",
+    },
+    "EN": {
+        "optim_grp_wind":  "🌬️ Wind",
+        "optim_grp_time":  "🕐 Time window",
+        "optim_grp_temp":  "🌡️ Temperature",
+        "optim_col_group": "Varied parameter",
+        "optim_col_ok":    "Target",
+        "optim_progress":  "Computing scenarios…",
+    },
+}
+for _k, _v in _PATCHES.get(L, {}).items():
+    t.setdefault(_k, _v)
+
+
 # ── Dépendance optionnelle : diptest ──────────────────────────────────────────
 try:
     import diptest as _diptest
