@@ -376,14 +376,20 @@ LANGUAGES = {
             "Meilleur résultat obtenu : {best} % résiduel. "
             "Les 5 scénarios les moins contraignants sont présentés ci-dessous :"
         ),
+                "optim_grp_wind": "🌬️ Vent",
+        "optim_grp_time": "🕐 Horaire",
+        "optim_grp_temp": "🌡️ Température",
+        "optim_col_group": "Paramètre varié",
         "optim_col_ok": "Objectif",
         "optim_col_window": "Plage horaire",
         "optim_col_curtailed_pct": "Taux de bridage",
         "optim_progress": "Calcul des scénarios en cours…",
         "optim_table_caption": (
-            "Une ligne par palier de vent (8 → 5 m/s) : meilleure combinaison température + plage horaire pour ce seuil. "
-            "✅ = objectif atteint. ⭐ = seuil de vent le moins élevé atteignant l'objectif "
-            "(minimise les pertes de production). Plage horaire : hh – hh (+1j) = chevauchant minuit."
+            "10 propositions par période — 3 groupes : "
+            "🌬️ 5 paliers de vent (8→5 m/s, meilleure temp+heure pour chacun) ; "
+            "🕐 3 plages horaires au vent de référence (temp optimale) ; "
+            "🌡️ 2 températures au vent de référence (meilleure plage horaire). "
+            "✅ = objectif atteint. ⭐ = vent MINIMUM atteignant l'objectif (bridage minimal → production maximisée)."
         ),
         "time_start": "Heure début (h)",
         "time_start_help": "Heure de début du bridage (incluse). Ex : 21 = à partir de 21h00.",
@@ -846,14 +852,20 @@ LANGUAGES = {
             "Best result: {best}% residual. "
             "The 5 least restrictive scenarios are shown below:"
         ),
+                "optim_grp_wind": "🌬️ Wind",
+        "optim_grp_time": "🕐 Time window",
+        "optim_grp_temp": "🌡️ Temperature",
+        "optim_col_group": "Varied parameter",
         "optim_col_ok": "Target",
         "optim_col_window": "Time window",
         "optim_col_curtailed_pct": "Curtailment rate",
         "optim_progress": "Computing scenarios…",
         "optim_table_caption": (
-            "One row per wind level (8 → 5 m/s): best temperature + time window for that threshold. "
-            "✅ = target achieved. ⭐ = lowest wind threshold achieving the target "
-            "(minimises production loss). Time window: hh – hh (+1d) = spanning midnight."
+            "10 proposals per period — 3 groups: "
+            "🌬️ 5 wind levels (8→5 m/s, best temp+window for each); "
+            "🕐 3 time windows at reference wind (optimal temp); "
+            "🌡️ 2 temperatures at reference wind (best time window). "
+            "✅ = target achieved. ⭐ = MINIMUM wind achieving target (least curtailment → maximum production)."
         ),
         "time_start": "Start time (h)",
         "time_start_help": "Curtailment start hour (inclusive). E.g. 21 = from 21:00.",
