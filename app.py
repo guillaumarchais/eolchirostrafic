@@ -1602,11 +1602,11 @@ with tab7:
             run_optim = oc2.button(t["optim_run"], use_container_width=True)
 
             if run_optim:
-                # ── Grille de paramètres (vent ≤ 8 m/s) ─────────────────────
-                WIND_GRID = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
-                TEMP_GRID = [6.0, 8.0, 10.0, 12.0, 14.0, 16.0]
+                # ── Grille de paramètres (vent ≤ 9 m/s) ─────────────────────
+                WIND_GRID = [5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0]
+                TEMP_GRID = [7.0, 8.0, 10.0, 12.0, 14.0, 16.0]
                 TS_GRID   = [19, 20, 21, 22]
-                TE_GRID   = [4, 5, 6, 7, 8]
+                TE_GRID   = [6, 7, 8]
 
                 # ── Comptage rapide des individus résiduels ───────────────────
                 def _count_residual_ind(df_residual, sep_min_val):
@@ -1687,7 +1687,7 @@ with tab7:
                     prog.empty()
 
                     # ── Sélection : meilleur scénario par palier de vent ─────────
-                    # Pour chaque seuil de vent (8.0 → 5.0), on retient le meilleur
+                    # Pour chaque seuil de vent (9.0 → 5.0), on retient le meilleur
                     # scénario (min individus résiduels → min % contacts → effort min
                     # → temp max). Cela montre concrètement le gain/coût à chaque
                     # réduction de 0,5 m/s.
@@ -1743,7 +1743,7 @@ with tab7:
                     # Vent de référence pour groupes 2 & 3 = vent du scénario optimal
                     ref_wind = star_scenario["wind"] if star_scenario else min(WIND_GRID)
 
-                    # ── GROUPE 1 : 5 paliers de vent (8 → 5), meilleur temp+heure ──
+                    # ── GROUPE 1 : 5 paliers de vent (9 → 5), meilleur temp+heure ──
                     wind_levels_g1 = sorted(WIND_GRID, reverse=True)[:5]
                     group1 = []
                     for wv in wind_levels_g1:
