@@ -48,6 +48,19 @@ _PATCHES = {
         "optim_col_group": "Paramètre varié",
         "optim_col_ok":    "Objectif",
         "optim_progress":  "Calcul des scénarios en cours…",
+        "tab_suivi":        "📈 Suivi",
+        "suivi_title":      "Suivi de l'efficacité du bridage implémenté",
+        "suivi_plan_title": "Paramètres du bridage implémenté",
+        "suivi_chart_title":"Individus estimés — avec et sans bridage",
+        "suivi_all_species":"Toutes les espèces",
+        "suivi_label_without":"Sans bridage",
+        "suivi_label_with": "Avec bridage (résiduel)",
+        "suivi_export_title":"Export des données de suivi",
+        "suivi_sheet_comparison":"Comparaison par nuit",
+        "suivi_sheet_without":"Sans bridage",
+        "suivi_sheet_with": "Avec bridage",
+        "suivi_download_excel":"⬇️ Télécharger (Excel)",
+        "suivi_export_caption":"Export contenant 3 feuilles.",
     },
     "EN": {
         "optim_grp_wind":  "🌬️ Wind",
@@ -56,6 +69,19 @@ _PATCHES = {
         "optim_col_group": "Varied parameter",
         "optim_col_ok":    "Target",
         "optim_progress":  "Computing scenarios…",
+        "tab_suivi":        "📈 Monitoring",
+        "suivi_title":      "Curtailment efficiency monitoring",
+        "suivi_plan_title": "Implemented curtailment parameters",
+        "suivi_chart_title":"Estimated individuals — with and without curtailment",
+        "suivi_all_species":"All species",
+        "suivi_label_without":"Without curtailment",
+        "suivi_label_with": "With curtailment (residual)",
+        "suivi_export_title":"Export monitoring data",
+        "suivi_sheet_comparison":"Nightly comparison",
+        "suivi_sheet_without":"Without curtailment",
+        "suivi_sheet_with": "With curtailment",
+        "suivi_download_excel":"⬇️ Download (Excel)",
+        "suivi_export_caption":"Export contains 3 sheets.",
     },
 }
 for _k, _v in _PATCHES.get(L, {}).items():
@@ -621,7 +647,7 @@ st.divider()
 # ─────────────────────────────────────────────────────────────────────────────
 # Onglets
 # ─────────────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     t["tab_data"],
     t["tab_distribution"],
     t["tab_estimation"],
@@ -629,6 +655,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     t["tab_export"],
     t["tab_report"],
     t["tab_bridage"],
+    t["tab_suivi"],
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1802,6 +1829,192 @@ with tab7:
                     st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
                     st.caption(t["optim_table_caption"])
 
+
+
+with tab8:
+    st.subheader(t["suivi_title"])
+    st.markdown(t["suivi_intro"])
+
+    has_wind_suivi = "vent_ms" in df_work.columns and df_work["vent_ms"].notna().any()
+    has_temp_suivi = "temp_c"  in df_work.columns and df_work["temp_c"].notna().any()
+
+    if not (has_wind_suivi and has_temp_suivi):
+        st.info(t["bridage_no_cols"])
+    else:
+        night_min_s = pd.Timestamp(df_work["nuit_acoustique"].min()).date()
+        night_max_s = pd.Timestamp(df_work["nuit_acoustique"].max()).date()
+
+        # ── Paramètres du plan de bridage implémenté ──────────────────────────
+        st.subheader(t["suivi_plan_title"])
+        n_periods_s = st.number_input(
+            t["n_periods_label"], min_value=1, max_value=5, value=1, step=1,
+            key="suivi_n_periods"
+        )
+        periods_s = []
+        for i in range(int(n_periods_s)):
+            with st.expander(t["period_label"].format(n=i + 1), expanded=(i == 0)):
+                sc1, sc2 = st.columns(2)
+                ps_start = sc1.date_input(
+                    t["period_start"], value=night_min_s,
+                    min_value=night_min_s, max_value=night_max_s,
+                    format="DD/MM/YYYY", key=f"s_start_{i}"
+                )
+                ps_end = sc2.date_input(
+                    t["period_end"], value=night_max_s,
+                    min_value=night_min_s, max_value=night_max_s,
+                    format="DD/MM/YYYY", key=f"s_end_{i}"
+                )
+                sh1, sh2 = st.columns(2)
+                ps_ts = sh1.number_input(
+                    t["time_start"], min_value=0, max_value=23, value=21, step=1,
+                    help=t["time_start_help"], key=f"s_tstart_{i}"
+                )
+                ps_te = sh2.number_input(
+                    t["time_end"], min_value=0, max_value=23, value=7, step=1,
+                    help=t["time_end_help"], key=f"s_tend_{i}"
+                )
+                sw1, sw2 = st.columns(2)
+                ps_wind = sw1.number_input(
+                    t["wind_threshold"], value=6.0, min_value=0.0,
+                    max_value=30.0, step=0.5, format="%.1f",
+                    help=t["wind_threshold_help"], key=f"s_wind_{i}"
+                )
+                ps_temp = sw2.number_input(
+                    t["temp_threshold"], value=12.0, min_value=-10.0,
+                    max_value=40.0, step=0.5, format="%.1f",
+                    help=t["temp_threshold_help"], key=f"s_temp_{i}"
+                )
+                cross_s = ps_ts > ps_te
+                hr_s = f"{ps_ts:02d}h → {ps_te:02d}h" + (" (+1)" if cross_s else "")
+                st.caption(t["period_summary"].format(
+                    start=ps_start.strftime("%d/%m/%Y"),
+                    end=ps_end.strftime("%d/%m/%Y"),
+                    hrange=hr_s, wind=ps_wind, temp=ps_temp
+                ))
+                periods_s.append({
+                    "start": ps_start, "end": ps_end,
+                    "time_start": int(ps_ts), "time_end": int(ps_te),
+                    "wind": ps_wind, "temp": ps_temp,
+                })
+
+        # ── Calcul du masque de bridage implémenté (vectorisé) ────────────────
+        _nuit_dt64_s = pd.to_datetime(df_work["nuit_acoustique"])
+        _hour_s      = df_work["datetime"].dt.hour
+        _w_s  = df_work["vent_ms"]  if has_wind_suivi else pd.Series(float("nan"), index=df_work.index)
+        _t_s  = df_work["temp_c"]   if has_temp_suivi else pd.Series(float("nan"), index=df_work.index)
+
+        mask_s = pd.Series(False, index=df_work.index)
+        for p in periods_s:
+            _ps2  = pd.Timestamp(p["start"])
+            _pe2  = pd.Timestamp(p["end"])
+            ts2, te2 = int(p["time_start"]), int(p["time_end"])
+            m_d = (_nuit_dt64_s >= _ps2) & (_nuit_dt64_s <= _pe2)
+            m_w = _w_s.notna() & (_w_s < p["wind"])
+            m_t = _t_s.notna() & (_t_s > p["temp"])
+            if ts2 <= te2:
+                m_h = (_hour_s >= ts2) & (_hour_s < te2)
+            else:
+                m_h = (_hour_s >= ts2) | (_hour_s < te2)
+            mask_s |= (m_d & m_w & m_t & m_h)
+
+        df_bridé     = df_work[mask_s].copy()
+        df_résiduel  = df_work[~mask_s].copy()
+        n_bridé      = int(mask_s.sum())
+        n_résiduel   = len(df_work) - n_bridé
+
+        # Métriques
+        st.markdown("---")
+        mc1, mc2, mc3 = st.columns(3)
+        mc1.metric(t["metric_contacts"], f"{len(df_work):,}")
+        mc2.metric(t["metric_curtailed"], f"{n_bridé:,}",
+                   delta=f"{n_bridé/len(df_work)*100:.1f} %")
+        mc3.metric(t["metric_residual"], f"{n_résiduel:,}",
+                   delta=f"↑ {n_résiduel/len(df_work)*100:.1f} %",
+                   delta_color="inverse")
+
+        # ── Graphiques comparatifs ────────────────────────────────────────────
+        st.markdown("---")
+        st.subheader(t["suivi_chart_title"])
+
+        # Sélecteur espèce
+        sp_options = [t["suivi_all_species"]] + all_species
+        sp_sel = st.selectbox(t["species_label"], sp_options, key="suivi_sp")
+
+        # summary sans bridage (déjà calculé)
+        summ_all = summary_df.copy()
+        summ_all[t["col_night_display"]] = summ_all[t["col_night_display"]].astype(str)
+
+        # summary avec bridage (résiduel uniquement)
+        summ_res_raw = build_summary(df_résiduel, sep_min)
+        summ_res = summ_res_raw.rename(columns={
+            "Nuit acoustique": t["col_night_display"],
+            "Espèce":          t["col_species_display"],
+            "Contacts":        t["col_contacts"],
+            "Individus estimés": t["col_ind_display"],
+        })
+        summ_res[t["col_night_display"]] = summ_res[t["col_night_display"]].astype(str)
+
+        # Filtre espèce
+        if sp_sel != t["suivi_all_species"]:
+            summ_all = summ_all[summ_all[t["col_species_display"]] == sp_sel]
+            summ_res = summ_res[summ_res[t["col_species_display"]] == sp_sel]
+
+        # Agrégation par nuit pour comparaison
+        agg_all = (summ_all.groupby(t["col_night_display"])[t["col_ind_display"]]
+                   .sum().reset_index()
+                   .rename(columns={t["col_ind_display"]: t["suivi_label_without"]}))
+        agg_res = (summ_res.groupby(t["col_night_display"])[t["col_ind_display"]]
+                   .sum().reset_index()
+                   .rename(columns={t["col_ind_display"]: t["suivi_label_with"]}))
+        agg = pd.merge(agg_all, agg_res, on=t["col_night_display"], how="left").fillna(0)
+        agg = agg.sort_values(t["col_night_display"])
+
+        # Graphique côte à côte
+        fig_suivi = go.Figure()
+        fig_suivi.add_trace(go.Bar(
+            x=agg[t["col_night_display"]],
+            y=agg[t["suivi_label_without"]],
+            name=t["suivi_label_without"],
+            marker_color="#4C72B0",
+            opacity=0.85,
+        ))
+        fig_suivi.add_trace(go.Bar(
+            x=agg[t["col_night_display"]],
+            y=agg[t["suivi_label_with"]],
+            name=t["suivi_label_with"],
+            marker_color="#DD8452",
+            opacity=0.85,
+        ))
+        fig_suivi.update_layout(
+            barmode="group",
+            xaxis_title=t["col_night_display"],
+            yaxis_title=t["col_ind_display"],
+            legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            margin=dict(t=10, b=60),
+            xaxis=dict(tickangle=-45),
+            height=400,
+        )
+        st.plotly_chart(fig_suivi, use_container_width=True)
+
+        # ── Export du graphique ────────────────────────────────────────────────
+        st.markdown("---")
+        st.subheader(t["suivi_export_title"])
+
+        # Excel avec les deux tableaux
+        buf_suivi = io.BytesIO()
+        with pd.ExcelWriter(buf_suivi, engine="openpyxl") as w:
+            agg.to_excel(w, sheet_name=t["suivi_sheet_comparison"], index=False)
+            summ_all.to_excel(w, sheet_name=t["suivi_sheet_without"], index=False)
+            summ_res.to_excel(w, sheet_name=t["suivi_sheet_with"], index=False)
+        buf_suivi.seek(0)
+        st.download_button(
+            t["suivi_download_excel"],
+            buf_suivi.getvalue(),
+            file_name=f"suivi_bridage_{uploaded.name.split('.')[0]}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dl_suivi"
+        )
+        st.caption(t["suivi_export_caption"])
 
 # ── Crédit auteur ─────────────────────────────────────────────────────────────
 st.markdown(
