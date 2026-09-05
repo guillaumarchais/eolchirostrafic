@@ -377,9 +377,17 @@ LANGUAGES = {
         "suivi_sheet_with": "Avec bridage",
         "suivi_download_excel": "⬇️ Télécharger (Excel)",
         "suivi_export_caption": (
-            "Export contenant 3 feuilles : comparaison nuitée, individus estimés sans bridage, "
-            "individus estimés avec bridage (résiduel)."
+            "Export contenant 3 feuilles (+ onglet mortalités si renseignées) : "
+            "comparaison nuitée, individus estimés sans bridage, avec bridage (résiduel)."
         ),
+        "suivi_mortality_title":    "Mortalités observées",
+        "suivi_mortality_intro": (
+            "Renseignez les chauves-souris trouvées mortes dans le cadre du suivi de mortalité. "
+            "Chaque entrée s'affiche sur l'histogramme sous forme d'un repère rouge visible."
+        ),
+        "suivi_mortality_add":      "➕ Ajouter",
+        "suivi_mortality_recorded": "Mortalités enregistrées",
+        "suivi_sheet_mortality":    "Mortalités",
 "tab_bridage": "🌬️ Bridage",
         # ── Optimisation du plan de bridage ─────────────────────────────────────
         "optim_title": "🔍 Optimisation du plan de bridage",
@@ -875,9 +883,17 @@ LANGUAGES = {
         "suivi_sheet_with": "With curtailment",
         "suivi_download_excel": "⬇️ Download (Excel)",
         "suivi_export_caption": (
-            "Export contains 3 sheets: nightly comparison, estimated individuals without curtailment, "
-            "estimated individuals with curtailment (residual)."
+            "Export contains 3 sheets (+ mortality sheet if data entered): "
+            "nightly comparison, estimated individuals without and with curtailment (residual)."
         ),
+        "suivi_mortality_title":    "Observed mortalities",
+        "suivi_mortality_intro": (
+            "Record any bats found dead during mortality monitoring. "
+            "Each entry appears on the histogram as a clearly visible red marker."
+        ),
+        "suivi_mortality_add":      "➕ Add",
+        "suivi_mortality_recorded": "Recorded mortalities",
+        "suivi_sheet_mortality":    "Mortalities",
 "tab_bridage": "🌬️ Curtailment",
         # ── Curtailment plan optimisation ────────────────────────────────────────
         "optim_title": "🔍 Curtailment plan optimisation",
