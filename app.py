@@ -61,6 +61,11 @@ _PATCHES = {
         "suivi_sheet_with": "Avec bridage",
         "suivi_download_excel":"⬇️ Télécharger (Excel)",
         "suivi_export_caption":"Export contenant 3 feuilles.",
+        "suivi_mortality_title":    "Mortalités observées",
+        "suivi_mortality_intro":    "Renseignez les chauves-souris trouvées mortes.",
+        "suivi_mortality_add":      "➕ Ajouter",
+        "suivi_mortality_recorded": "Mortalités enregistrées",
+        "suivi_sheet_mortality":    "Mortalités",
     },
     "EN": {
         "optim_grp_wind":  "🌬️ Wind",
@@ -82,6 +87,11 @@ _PATCHES = {
         "suivi_sheet_with": "With curtailment",
         "suivi_download_excel":"⬇️ Download (Excel)",
         "suivi_export_caption":"Export contains 3 sheets.",
+        "suivi_mortality_title":    "Observed mortalities",
+        "suivi_mortality_intro":    "Record any bats found dead during monitoring.",
+        "suivi_mortality_add":      "➕ Add",
+        "suivi_mortality_recorded": "Recorded mortalities",
+        "suivi_sheet_mortality":    "Mortalities",
     },
 }
 for _k, _v in _PATCHES.get(L, {}).items():
@@ -1994,6 +2004,98 @@ with tab8:
             xaxis=dict(tickangle=-45),
             height=400,
         )
+        # ── Saisie des mortalités ─────────────────────────────────────────────
+        st.markdown("---")
+        st.subheader(t["suivi_mortality_title"])
+        st.markdown(t["suivi_mortality_intro"])
+
+        # Session state pour stocker la liste de mortalités
+        if "mortality_list" not in st.session_state:
+            st.session_state["mortality_list"] = []
+
+        # Formulaire d'ajout
+        with st.form("mortality_form", clear_on_submit=True):
+            fm1, fm2, fm3 = st.columns([2, 2, 1])
+            mort_sp = fm1.selectbox(
+                t["col_species_display"],
+                all_species,
+                key="mort_sp_input"
+            )
+            mort_date = fm2.date_input(
+                t["period_start"],
+                value=night_min_s,
+                min_value=night_min_s,
+                max_value=night_max_s,
+                format="DD/MM/YYYY",
+                key="mort_date_input"
+            )
+            submitted = fm3.form_submit_button(
+                t["suivi_mortality_add"], use_container_width=True
+            )
+            if submitted:
+                st.session_state["mortality_list"].append({
+                    "espece": mort_sp,
+                    "date":   mort_date,
+                })
+
+        # Liste des mortalités saisies + bouton de suppression
+        if st.session_state["mortality_list"]:
+            st.markdown(f"**{t['suivi_mortality_recorded']}**")
+            to_delete = []
+            for idx, m in enumerate(st.session_state["mortality_list"]):
+                col_a, col_b, col_c = st.columns([2, 2, 1])
+                col_a.markdown(f"*{m['espece']}*")
+                col_b.markdown(m["date"].strftime("%d/%m/%Y"))
+                if col_c.button("🗑️", key=f"del_mort_{idx}"):
+                    to_delete.append(idx)
+            for idx in sorted(to_delete, reverse=True):
+                st.session_state["mortality_list"].pop(idx)
+            st.rerun()
+
+        # ── Ajout des mortalités sur le graphique ─────────────────────────────
+        if st.session_state["mortality_list"]:
+            x_vals = list(agg[t["col_night_display"]].values)
+            y_max  = float(agg[[t["suivi_label_without"], t["suivi_label_with"]]].max().max())
+            y_mort = y_max * 1.08          # légèrement au-dessus des barres
+            y_top  = y_max * 1.20          # hauteur de la ligne verticale
+
+            for m in st.session_state["mortality_list"]:
+                m_night = str(m["date"])   # YYYY-MM-DD
+                if m_night in x_vals:
+                    x_idx = m_night        # position sur l'axe catégoriel
+                else:
+                    # chercher la nuit acoustique la plus proche
+                    x_idx = min(x_vals, key=lambda v: abs(
+                        pd.Timestamp(v) - pd.Timestamp(m["date"])
+                    ), default=None)
+                if x_idx is None:
+                    continue
+
+                # Ligne verticale rouge
+                fig_suivi.add_shape(
+                    type="line",
+                    x0=x_idx, x1=x_idx,
+                    y0=0, y1=y_top,
+                    line=dict(color="red", width=2, dash="dot"),
+                )
+                # Marqueur ☠️ + nom espèce
+                sp_short = m["espece"].split()[-1] if " " in m["espece"] else m["espece"]
+                fig_suivi.add_annotation(
+                    x=x_idx, y=y_mort,
+                    text=f"☠️ {sp_short}",
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowcolor="red",
+                    font=dict(color="red", size=11, family="Arial Black"),
+                    bgcolor="rgba(255,200,200,0.85)",
+                    bordercolor="red",
+                    borderwidth=1,
+                    yanchor="bottom",
+                )
+
+            # Mettre à jour la hauteur pour accueillir les annotations
+            fig_suivi.update_layout(yaxis_range=[0, y_top * 1.05])
+
         st.plotly_chart(fig_suivi, use_container_width=True)
 
         # ── Export du graphique ────────────────────────────────────────────────
@@ -2002,10 +2104,17 @@ with tab8:
 
         # Excel avec les deux tableaux
         buf_suivi = io.BytesIO()
+        mort_df = pd.DataFrame([
+            {"Espèce / Species": m["espece"],
+             "Date": m["date"].strftime("%d/%m/%Y")}
+            for m in st.session_state.get("mortality_list", [])
+        ])
         with pd.ExcelWriter(buf_suivi, engine="openpyxl") as w:
             agg.to_excel(w, sheet_name=t["suivi_sheet_comparison"], index=False)
             summ_all.to_excel(w, sheet_name=t["suivi_sheet_without"], index=False)
             summ_res.to_excel(w, sheet_name=t["suivi_sheet_with"], index=False)
+            if not mort_df.empty:
+                mort_df.to_excel(w, sheet_name=t["suivi_sheet_mortality"], index=False)
         buf_suivi.seek(0)
         st.download_button(
             t["suivi_download_excel"],
