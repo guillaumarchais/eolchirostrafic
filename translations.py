@@ -358,7 +358,29 @@ LANGUAGES = {
         ),
 
         # ── Bridage adaptatif (tab 7) ─────────────────────────────────────────
-        "tab_bridage": "🌬️ Bridage",
+                # ── Onglet Suivi (tab 8) ──────────────────────────────────────────────────
+        "tab_suivi": "📈 Suivi",
+        "suivi_title": "Suivi de l'efficacité du bridage implémenté",
+        "suivi_intro": (
+            "Saisissez les paramètres du plan de bridage réellement mis en œuvre. "
+            "L'application calcule l'activité résiduelle et compare les individus estimés "
+            "avant et après application du bridage."
+        ),
+        "suivi_plan_title": "Paramètres du bridage implémenté",
+        "suivi_chart_title": "Individus estimés — comparaison avec et sans bridage",
+        "suivi_all_species": "Toutes les espèces",
+        "suivi_label_without": "Sans bridage",
+        "suivi_label_with": "Avec bridage (résiduel)",
+        "suivi_export_title": "Export des données de suivi",
+        "suivi_sheet_comparison": "Comparaison par nuit",
+        "suivi_sheet_without": "Sans bridage",
+        "suivi_sheet_with": "Avec bridage",
+        "suivi_download_excel": "⬇️ Télécharger (Excel)",
+        "suivi_export_caption": (
+            "Export contenant 3 feuilles : comparaison nuitée, individus estimés sans bridage, "
+            "individus estimés avec bridage (résiduel)."
+        ),
+"tab_bridage": "🌬️ Bridage",
         # ── Optimisation du plan de bridage ─────────────────────────────────────
         "optim_title": "🔍 Optimisation du plan de bridage",
         "optim_intro": (
@@ -370,7 +392,7 @@ LANGUAGES = {
         "optim_run": "▶  Calculer les scénarios optimaux",
         "optim_period_title": "Période {n} — {start} → {end}",
         "optim_no_contacts": "Aucun contact avec données vent/temp sur cette période.",
-        "optim_found": "{n} scénario(s) atteignant l'objectif (≤ {target} % résiduel). Les 10 moins contraignants :",
+        "optim_found": "{n} scénario(s) atteignant l'objectif (≤ {target} % résiduel). Les 5 moins contraignants :",
         "optim_not_found": (
             "⚠️ Aucun scénario avec vent ≤ 8 m/s n'atteint l'objectif. "
             "Meilleur résultat obtenu : {best} % résiduel. "
@@ -834,7 +856,29 @@ LANGUAGES = {
         ),
 
         # ── Adaptive curtailment (tab 7) ─────────────────────────────────────
-        "tab_bridage": "🌬️ Curtailment",
+                # ── Monitoring tab (tab 8) ────────────────────────────────────────────────
+        "tab_suivi": "📈 Monitoring",
+        "suivi_title": "Curtailment efficiency monitoring",
+        "suivi_intro": (
+            "Enter the parameters of the curtailment plan as actually implemented. "
+            "The application computes residual activity and compares estimated individuals "
+            "before and after curtailment."
+        ),
+        "suivi_plan_title": "Implemented curtailment parameters",
+        "suivi_chart_title": "Estimated individuals — with and without curtailment",
+        "suivi_all_species": "All species",
+        "suivi_label_without": "Without curtailment",
+        "suivi_label_with": "With curtailment (residual)",
+        "suivi_export_title": "Export monitoring data",
+        "suivi_sheet_comparison": "Nightly comparison",
+        "suivi_sheet_without": "Without curtailment",
+        "suivi_sheet_with": "With curtailment",
+        "suivi_download_excel": "⬇️ Download (Excel)",
+        "suivi_export_caption": (
+            "Export contains 3 sheets: nightly comparison, estimated individuals without curtailment, "
+            "estimated individuals with curtailment (residual)."
+        ),
+"tab_bridage": "🌬️ Curtailment",
         # ── Curtailment plan optimisation ────────────────────────────────────────
         "optim_title": "🔍 Curtailment plan optimisation",
         "optim_intro": (
@@ -846,7 +890,7 @@ LANGUAGES = {
         "optim_run": "▶  Calculate optimal scenarios",
         "optim_period_title": "Period {n} — {start} → {end}",
         "optim_no_contacts": "No contacts with wind/temp data for this period.",
-        "optim_found": "{n} scenario(s) achieving the target (≤ {target}% residual). The 10 least restrictive:",
+        "optim_found": "{n} scenario(s) achieving the target (≤ {target}% residual). The 5 least restrictive:",
         "optim_not_found": (
             "⚠️ No scenario with wind ≤ 8 m/s achieves the target. "
             "Best result: {best}% residual. "
