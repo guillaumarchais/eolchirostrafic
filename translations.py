@@ -388,6 +388,92 @@ LANGUAGES = {
         "suivi_mortality_add":      "➕ Ajouter",
         "suivi_mortality_recorded": "Mortalités enregistrées",
         "suivi_sheet_mortality":    "Mortalités",
+        # ── Analyse mortalités (tab Suivi) ──────────────────────────────────────
+        "suivi_analysis_title": "Analyse : Mortalités vs Activité résiduelle",
+        "suivi_analysis_intro": (
+            "Croisement automatique entre les mortalités renseignées et l'activité non protégée "
+            "par le plan de bridage implémenté."
+        ),
+        "suivi_analysis_with_activity":  "🔴 Nuit avec activité résiduelle",
+        "suivi_analysis_no_activity":    "🟢 Nuit sans activité résiduelle",
+        "suivi_analysis_out_of_range":   "⬜ Hors période de suivi",
+        "suivi_analysis_status":         "Statut de la nuit",
+        "suivi_analysis_ind_res":        "Individus résiduels estimés",
+        "suivi_analysis_n_with":         "Mortalités — nuits avec activité résiduelle",
+        "suivi_analysis_n_without":      "Mortalités — nuits sans activité résiduelle",
+        "suivi_analysis_interpretation_title": "Interprétation",
+        "suivi_analysis_no_data": (
+            "Aucune mortalité ne peut être croisée avec les données de suivi disponibles."
+        ),
+        "suivi_analysis_high_residual": (
+            "⚠️ **{pct} % des mortalités classifiables ({n} sur {total}) sont survenues lors de nuits "
+            "avec activité résiduelle significative.** "
+            "Cela suggère que le plan de bridage implémenté est **insuffisant** pour protéger efficacement "
+            "les chauves-souris sur ces périodes. Il est recommandé de revoir les paramètres : "
+            "abaisser le seuil de vent, élargir la plage horaire ou abaisser le seuil de température. "
+            "Un audit du respect des consignes de bridage sur le terrain est également conseillé."
+        ),
+        "suivi_analysis_mixed": (
+            "📊 **Résultat mixte** : {pct_with} % des mortalités ({n_with}) surviennent lors de nuits avec activité résiduelle, "
+            "{pct_without} % ({n_without}) lors de nuits sans activité résiduelle estimée. "
+            "Le bridage couvre partiellement le risque, mais des ajustements pourraient réduire l'exposition résiduelle. "
+            "La part de mortalités hors activité résiduelle peut refléter une limite de détection acoustique "
+            "(couverture spatiale incomplète, individus transitant hors de portée du capteur)."
+        ),
+        "suivi_analysis_low_residual": (
+            "ℹ️ **{pct} % des mortalités classifiables ({n} sur {total}) surviennent lors de nuits sans activité résiduelle estimée.** "
+            "Le plan de bridage semble couvrir les périodes à risque. "
+            "Ces mortalités peuvent s'expliquer par : une détection acoustique incomplète (angle d'approche, portée limitée du capteur), "
+            "des individus transitant à haute altitude hors de portée du micro, "
+            "ou des causes indépendantes du passage devant la turbine (collisions fortuites, blessures préexistantes). "
+            "Une révision du protocole de monitoring acoustique pourrait être envisagée."
+        ),
+        "suivi_analysis_out_of_range_note": (
+            "{n} mortalité(s) renseignée(s) hors de la période de suivi acoustique — non classifiée(s)."
+        ),
+        # ── Analyse mortalités (tab Suivi) ──────────────────────────────────────
+        "suivi_analysis_title": "Analyse : Mortalités vs Activité résiduelle",
+        "suivi_analysis_intro": (
+            "Croisement automatique entre les mortalités renseignées et l'activité non protégée "
+            "par le plan de bridage implémenté."
+        ),
+        "suivi_analysis_with_activity":  "🔴 Nuit avec activité résiduelle",
+        "suivi_analysis_no_activity":    "🟢 Nuit sans activité résiduelle",
+        "suivi_analysis_out_of_range":   "⬜ Hors période de suivi",
+        "suivi_analysis_status":         "Statut de la nuit",
+        "suivi_analysis_ind_res":        "Individus résiduels estimés",
+        "suivi_analysis_n_with":         "Mortalités — nuits avec activité résiduelle",
+        "suivi_analysis_n_without":      "Mortalités — nuits sans activité résiduelle",
+        "suivi_analysis_interpretation_title": "Interprétation",
+        "suivi_analysis_no_data": (
+            "Aucune mortalité ne peut être croisée avec les données de suivi disponibles."
+        ),
+        "suivi_analysis_high_residual": (
+            "⚠️ **{pct} % des mortalités classifiables ({n} sur {total}) sont survenues lors de nuits "
+            "avec activité résiduelle significative.** "
+            "Cela suggère que le plan de bridage implémenté est **insuffisant** pour protéger efficacement "
+            "les chauves-souris sur ces périodes. Il est recommandé de revoir les paramètres : "
+            "abaisser le seuil de vent, élargir la plage horaire ou abaisser le seuil de température. "
+            "Un audit du respect des consignes de bridage sur le terrain est également conseillé."
+        ),
+        "suivi_analysis_mixed": (
+            "📊 **Résultat mixte** : {pct_with} % des mortalités ({n_with}) surviennent lors de nuits avec activité résiduelle, "
+            "{pct_without} % ({n_without}) lors de nuits sans activité résiduelle estimée. "
+            "Le bridage couvre partiellement le risque, mais des ajustements pourraient réduire l'exposition résiduelle. "
+            "La part de mortalités hors activité résiduelle peut refléter une limite de détection acoustique "
+            "(couverture spatiale incomplète, individus transitant hors de portée du capteur)."
+        ),
+        "suivi_analysis_low_residual": (
+            "ℹ️ **{pct} % des mortalités classifiables ({n} sur {total}) surviennent lors de nuits sans activité résiduelle estimée.** "
+            "Le plan de bridage semble couvrir les périodes à risque. "
+            "Ces mortalités peuvent s'expliquer par : une détection acoustique incomplète (angle d'approche, portée limitée du capteur), "
+            "des individus transitant à haute altitude hors de portée du micro, "
+            "ou des causes indépendantes du passage devant la turbine (collisions fortuites, blessures préexistantes). "
+            "Une révision du protocole de monitoring acoustique pourrait être envisagée."
+        ),
+        "suivi_analysis_out_of_range_note": (
+            "{n} mortalité(s) renseignée(s) hors de la période de suivi acoustique — non classifiée(s)."
+        ),
 "tab_bridage": "🌬️ Bridage",
         # ── Optimisation du plan de bridage ─────────────────────────────────────
         "optim_title": "🔍 Optimisation du plan de bridage",
@@ -894,6 +980,92 @@ LANGUAGES = {
         "suivi_mortality_add":      "➕ Add",
         "suivi_mortality_recorded": "Recorded mortalities",
         "suivi_sheet_mortality":    "Mortalities",
+        # ── Mortality analysis (Monitoring tab) ─────────────────────────────────
+        "suivi_analysis_title": "Analysis: Mortalities vs Residual Activity",
+        "suivi_analysis_intro": (
+            "Automatic cross-reference between recorded mortalities and activity not protected "
+            "by the implemented curtailment plan."
+        ),
+        "suivi_analysis_with_activity":  "🔴 Night with residual activity",
+        "suivi_analysis_no_activity":    "🟢 Night with no residual activity",
+        "suivi_analysis_out_of_range":   "⬜ Outside monitoring period",
+        "suivi_analysis_status":         "Night status",
+        "suivi_analysis_ind_res":        "Estimated residual individuals",
+        "suivi_analysis_n_with":         "Mortalities — nights with residual activity",
+        "suivi_analysis_n_without":      "Mortalities — nights with no residual activity",
+        "suivi_analysis_interpretation_title": "Interpretation",
+        "suivi_analysis_no_data": (
+            "No mortality can be cross-referenced with available monitoring data."
+        ),
+        "suivi_analysis_high_residual": (
+            "⚠️ **{pct}% of classifiable mortalities ({n} out of {total}) occurred on nights "
+            "with significant residual activity.** "
+            "This suggests the implemented curtailment plan is **insufficient** to effectively protect "
+            "bats during these periods. Adjustments are recommended: lower the wind threshold, "
+            "extend the time window, or lower the temperature threshold. "
+            "Compliance with curtailment instructions in the field should also be audited."
+        ),
+        "suivi_analysis_mixed": (
+            "📊 **Mixed result**: {pct_with}% of mortalities ({n_with}) occur on nights with residual activity, "
+            "{pct_without}% ({n_without}) on nights with no estimated residual activity. "
+            "Curtailment partially covers the risk but adjustments could reduce residual exposure. "
+            "Mortalities outside residual activity may reflect acoustic detection limits "
+            "(incomplete spatial coverage, individuals transiting beyond sensor range)."
+        ),
+        "suivi_analysis_low_residual": (
+            "ℹ️ **{pct}% of classifiable mortalities ({n} out of {total}) occur on nights with no estimated residual activity.** "
+            "The curtailment plan appears to cover the risk periods. "
+            "These mortalities may be explained by: incomplete acoustic detection (approach angle, "
+            "limited sensor range), individuals transiting at high altitude beyond microphone reach, "
+            "or causes unrelated to turbine passage (chance collisions, pre-existing injuries). "
+            "A review of the acoustic monitoring protocol could be considered."
+        ),
+        "suivi_analysis_out_of_range_note": (
+            "{n} mortality/ies recorded outside the acoustic monitoring period — not classified."
+        ),
+        # ── Mortality analysis (Monitoring tab) ─────────────────────────────────
+        "suivi_analysis_title": "Analysis: Mortalities vs Residual Activity",
+        "suivi_analysis_intro": (
+            "Automatic cross-reference between recorded mortalities and activity not protected "
+            "by the implemented curtailment plan."
+        ),
+        "suivi_analysis_with_activity":  "🔴 Night with residual activity",
+        "suivi_analysis_no_activity":    "🟢 Night with no residual activity",
+        "suivi_analysis_out_of_range":   "⬜ Outside monitoring period",
+        "suivi_analysis_status":         "Night status",
+        "suivi_analysis_ind_res":        "Estimated residual individuals",
+        "suivi_analysis_n_with":         "Mortalities — nights with residual activity",
+        "suivi_analysis_n_without":      "Mortalities — nights with no residual activity",
+        "suivi_analysis_interpretation_title": "Interpretation",
+        "suivi_analysis_no_data": (
+            "No mortality can be cross-referenced with available monitoring data."
+        ),
+        "suivi_analysis_high_residual": (
+            "⚠️ **{pct}% of classifiable mortalities ({n} out of {total}) occurred on nights "
+            "with significant residual activity.** "
+            "This suggests the implemented curtailment plan is **insufficient** to effectively protect "
+            "bats during these periods. Adjustments are recommended: lower the wind threshold, "
+            "extend the time window, or lower the temperature threshold. "
+            "Compliance with curtailment instructions in the field should also be audited."
+        ),
+        "suivi_analysis_mixed": (
+            "📊 **Mixed result**: {pct_with}% of mortalities ({n_with}) occur on nights with residual activity, "
+            "{pct_without}% ({n_without}) on nights with no estimated residual activity. "
+            "Curtailment partially covers the risk but adjustments could reduce residual exposure. "
+            "Mortalities outside residual activity may reflect acoustic detection limits "
+            "(incomplete spatial coverage, individuals transiting beyond sensor range)."
+        ),
+        "suivi_analysis_low_residual": (
+            "ℹ️ **{pct}% of classifiable mortalities ({n} out of {total}) occur on nights with no estimated residual activity.** "
+            "The curtailment plan appears to cover the risk periods. "
+            "These mortalities may be explained by: incomplete acoustic detection (approach angle, "
+            "limited sensor range), individuals transiting at high altitude beyond microphone reach, "
+            "or causes unrelated to turbine passage (chance collisions, pre-existing injuries). "
+            "A review of the acoustic monitoring protocol could be considered."
+        ),
+        "suivi_analysis_out_of_range_note": (
+            "{n} mortality/ies recorded outside the acoustic monitoring period — not classified."
+        ),
 "tab_bridage": "🌬️ Curtailment",
         # ── Curtailment plan optimisation ────────────────────────────────────────
         "optim_title": "🔍 Curtailment plan optimisation",
