@@ -1952,7 +1952,8 @@ with tab8:
 
         # summary sans bridage (déjà calculé)
         summ_all = summary_df.copy()
-        summ_all[t["col_night_display"]] = summ_all[t["col_night_display"]].astype(str)
+        summ_all[t["col_night_display"]] = pd.to_datetime(
+            summ_all[t["col_night_display"]]).dt.strftime("%Y-%m-%d")
 
         # summary avec bridage (résiduel uniquement)
         summ_res_raw = build_summary(df_résiduel, sep_min)
@@ -1962,7 +1963,8 @@ with tab8:
             "Contacts":        t["col_contacts"],
             "Individus estimés": t["col_ind_display"],
         })
-        summ_res[t["col_night_display"]] = summ_res[t["col_night_display"]].astype(str)
+        summ_res[t["col_night_display"]] = pd.to_datetime(
+            summ_res[t["col_night_display"]]).dt.strftime("%Y-%m-%d")
 
         # Filtre espèce
         # Versions toutes espèces conservées pour l'analyse (avant filtre)
@@ -2057,6 +2059,70 @@ with tab8:
                     st.session_state["mortality_list"].pop(idx)
                 st.rerun()
 
+
+        # ── Pannes techniques de bridage ──────────────────────────────────────
+        st.markdown("---")
+        st.subheader(t["suivi_malfunction_title"])
+        st.markdown(t["suivi_malfunction_intro"])
+
+        if "malfunction_periods" not in st.session_state:
+            st.session_state["malfunction_periods"] = []
+
+        with st.form("malfunction_form", clear_on_submit=True):
+            mf1, mf2, mf3, mf4 = st.columns([2, 2, 3, 1])
+            mf_start = mf1.date_input(
+                t["period_start"], value=night_min_s,
+                min_value=night_min_s, max_value=night_max_s,
+                format="DD/MM/YYYY", key="mf_start"
+            )
+            mf_end = mf2.date_input(
+                t["period_end"], value=night_min_s,
+                min_value=night_min_s, max_value=night_max_s,
+                format="DD/MM/YYYY", key="mf_end"
+            )
+            mf_label = mf3.text_input(
+                t["suivi_malfunction_label"], placeholder=t["suivi_malfunction_placeholder"],
+                key="mf_label"
+            )
+            mf_submitted = mf4.form_submit_button(
+                t["suivi_mortality_add"], use_container_width=True
+            )
+            if mf_submitted:
+                st.session_state["malfunction_periods"].append({
+                    "start": mf_start,
+                    "end":   mf_end,
+                    "label": mf_label or t["suivi_malfunction_default_label"],
+                })
+
+        if st.session_state["malfunction_periods"]:
+            st.markdown(f"**{t['suivi_malfunction_recorded']}**")
+            mf_delete = []
+            for idx, mf in enumerate(st.session_state["malfunction_periods"]):
+                ca, cb, cc, cd = st.columns([2, 2, 3, 1])
+                ca.markdown(mf["start"].strftime("%d/%m/%Y"))
+                cb.markdown(mf["end"].strftime("%d/%m/%Y"))
+                cc.markdown(f"*{mf['label']}*")
+                if cd.button("🗑️", key=f"del_mf_{idx}"):
+                    mf_delete.append(idx)
+            if mf_delete:
+                for idx in sorted(mf_delete, reverse=True):
+                    st.session_state["malfunction_periods"].pop(idx)
+                st.rerun()
+
+            # Afficher les périodes de panne sur le graphique (zone grisée)
+            for mf in st.session_state["malfunction_periods"]:
+                mf_s = mf["start"].strftime("%Y-%m-%d")
+                mf_e = mf["end"].strftime("%Y-%m-%d")
+                fig_suivi.add_vrect(
+                    x0=mf_s, x1=mf_e,
+                    fillcolor="orange", opacity=0.15,
+                    layer="below", line_width=0,
+                    annotation_text=f"⚠️ {mf['label']}",
+                    annotation_position="top left",
+                    annotation_font_size=10,
+                    annotation_font_color="darkorange",
+                )
+
         # ── Ajout des mortalités sur le graphique ─────────────────────────────
         if st.session_state["mortality_list"]:
             x_vals = list(agg[t["col_night_display"]].values)
@@ -2065,7 +2131,7 @@ with tab8:
             y_top  = y_max * 1.20          # hauteur de la ligne verticale
 
             for m in st.session_state["mortality_list"]:
-                m_night = str(m["date"])   # YYYY-MM-DD
+                m_night = m["date"].strftime("%Y-%m-%d")  # format normalisé YYYY-MM-DD
                 if m_night in x_vals:
                     x_idx = m_night        # position sur l'axe catégoriel
                 else:
@@ -2084,7 +2150,7 @@ with tab8:
                     line=dict(color="red", width=2, dash="dot"),
                 )
                 # Marqueur ☠️ + nom espèce
-                sp_short = m["espece"].split()[-1] if " " in m["espece"] else m["espece"]
+                sp_short = m["espece"].split()[0]   # premier mot (ex: "Pipistrelle")
                 fig_suivi.add_annotation(
                     x=x_idx, y=y_mort,
                     text=f"☠️ {sp_short}",
@@ -2114,12 +2180,20 @@ with tab8:
              "Date": m["date"].strftime("%d/%m/%Y")}
             for m in st.session_state.get("mortality_list", [])
         ])
+        malf_df = pd.DataFrame([
+            {"Début / Start": mf["start"].strftime("%d/%m/%Y"),
+             "Fin / End":     mf["end"].strftime("%d/%m/%Y"),
+             "Motif / Label": mf["label"]}
+            for mf in st.session_state.get("malfunction_periods", [])
+        ])
         with pd.ExcelWriter(buf_suivi, engine="openpyxl") as w:
             agg.to_excel(w, sheet_name=t["suivi_sheet_comparison"], index=False)
             summ_all.to_excel(w, sheet_name=t["suivi_sheet_without"], index=False)
             summ_res.to_excel(w, sheet_name=t["suivi_sheet_with"], index=False)
             if not mort_df.empty:
                 mort_df.to_excel(w, sheet_name=t["suivi_sheet_mortality"], index=False)
+            if not malf_df.empty:
+                malf_df.to_excel(w, sheet_name=t["suivi_sheet_malfunction"], index=False)
         buf_suivi.seek(0)
         st.download_button(
             t["suivi_download_excel"],
@@ -2143,11 +2217,11 @@ with tab8:
                 nights_with_residual = set(
                     summ_res_full[
                         summ_res_full[t["col_ind_display"]] > 0
-                    ][t["col_night_display"]].astype(str).unique()
+                    ][t["col_night_display"]].unique()
                 )
                 # Toutes les nuits du suivi = toutes les nuits acoustiques du fichier
                 all_nights_in_data = set(
-                    summ_all_full[t["col_night_display"]].astype(str).unique()
+                    summ_all_full[t["col_night_display"]].unique()
                 )
 
                 n_mort = len(st.session_state["mortality_list"])
@@ -2155,7 +2229,7 @@ with tab8:
                 detail_rows = []
 
                 for m in st.session_state["mortality_list"]:
-                    m_night = str(m["date"])
+                    m_night = m["date"].strftime("%Y-%m-%d")
                     if m_night not in all_nights_in_data:
                         n_out_of_range += 1
                         ind_res = "—"
@@ -2164,7 +2238,7 @@ with tab8:
                         n_with += 1
                         ind_res = int(
                             summ_res_full[
-                                summ_res_full[t["col_night_display"]].astype(str) == m_night
+                                summ_res_full[t["col_night_display"]] == m_night
                             ][t["col_ind_display"]].sum()
                         )
                         status = t["suivi_analysis_with_activity"]
@@ -2173,11 +2247,22 @@ with tab8:
                         ind_res = 0
                         status  = t["suivi_analysis_no_activity"]
 
+                    # Vérifier si la mortalité tombe dans une période de panne
+                    in_malfunction = any(
+                        mf["start"] <= m["date"] <= mf["end"]
+                        for mf in st.session_state.get("malfunction_periods", [])
+                    )
+                    mf_label_val = next(
+                        (mf["label"] for mf in st.session_state.get("malfunction_periods", [])
+                         if mf["start"] <= m["date"] <= mf["end"]),
+                        "—"
+                    )
                     detail_rows.append({
-                        t["col_species_display"]:   m["espece"],
-                        t["period_start"]:          m["date"].strftime("%d/%m/%Y"),
-                        t["suivi_analysis_status"]: status,
-                        t["suivi_analysis_ind_res"]: ind_res,
+                        t["col_species_display"]:       m["espece"],
+                        t["period_start"]:              m["date"].strftime("%d/%m/%Y"),
+                        t["suivi_analysis_status"]:     status,
+                        t["suivi_analysis_ind_res"]:    ind_res,
+                        t["suivi_malfunction_col"]:     f"⚠️ {mf_label_val}" if in_malfunction else "✅",
                     })
 
                 n_classifiable = n_with + n_without
@@ -2228,6 +2313,24 @@ with tab8:
                     st.caption(t["suivi_analysis_out_of_range_note"].format(
                         n=n_out_of_range
                     ))
+
+                # ── Contexte panne technique ──────────────────────────────────
+                malf_list = st.session_state.get("malfunction_periods", [])
+                if malf_list:
+                    n_mort_in_malf = sum(
+                        1 for row in detail_rows
+                        if row.get(t["suivi_malfunction_col"], "✅").startswith("⚠️")
+                    )
+                    if n_mort_in_malf > 0:
+                        malf_labels = ", ".join(
+                            f"{mf['label']} ({mf['start'].strftime('%d/%m/%Y')} – {mf['end'].strftime('%d/%m/%Y')})"
+                            for mf in malf_list
+                        )
+                        st.warning(t["suivi_malfunction_analysis"].format(
+                            n=n_mort_in_malf, total=n_mort, labels=malf_labels
+                        ))
+                    else:
+                        st.success(t["suivi_malfunction_none_during"])
 
 
 # ── Crédit auteur ─────────────────────────────────────────────────────────────
