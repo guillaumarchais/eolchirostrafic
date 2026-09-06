@@ -2048,9 +2048,10 @@ with tab8:
                 col_b.markdown(m["date"].strftime("%d/%m/%Y"))
                 if col_c.button("🗑️", key=f"del_mort_{idx}"):
                     to_delete.append(idx)
-            for idx in sorted(to_delete, reverse=True):
-                st.session_state["mortality_list"].pop(idx)
-            st.rerun()
+            if to_delete:
+                for idx in sorted(to_delete, reverse=True):
+                    st.session_state["mortality_list"].pop(idx)
+                st.rerun()
 
         # ── Ajout des mortalités sur le graphique ─────────────────────────────
         if st.session_state["mortality_list"]:
