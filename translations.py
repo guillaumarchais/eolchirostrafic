@@ -388,6 +388,33 @@ LANGUAGES = {
         "suivi_mortality_add":      "➕ Ajouter",
         "suivi_mortality_recorded": "Mortalités enregistrées",
         "suivi_sheet_mortality":    "Mortalités",
+        # ── Dysfonctionnement bridage (tab Suivi) ────────────────────────────────
+        "suivi_malfunction_title":        "Dysfonctionnements du bridage",
+        "suivi_malfunction_intro": (
+            "Renseignez les éventuelles périodes pendant lesquelles un dysfonctionnement "
+            "du système de bridage a été constaté (panne technique, défaut de consigne). "
+            "Ces périodes apparaissent en orange sur l'histogramme et sont prises en compte "
+            "dans l'analyse des mortalités."
+        ),
+        "suivi_malfunction_label":        "Motif / description (optionnel)",
+        "suivi_malfunction_placeholder":  "Ex : panne anémomètre, erreur de paramétrage…",
+        "suivi_malfunction_default_label": "Panne technique",
+        "suivi_malfunction_recorded":     "Périodes de dysfonctionnement enregistrées",
+        "suivi_malfunction_col":          "Panne technique",
+        "suivi_malfunction_analysis": (
+            "⚠️ **{n} mortalité(s) sur {total} surviennent pendant une période de "
+            "dysfonctionnement du bridage déclarée ({labels}).** "
+            "Cela constitue une explication potentielle majeure : le système de bridage "
+            "n'étant pas opérationnel, les éoliennes ont pu tourner pendant des conditions "
+            "normalement protégées, exposant les chauves-souris à un risque de collision "
+            "non maîtrisé. Il est recommandé de vérifier les données de fonctionnement "
+            "turbine pour cette période et d'en informer le service instructeur."
+        ),
+        "suivi_malfunction_none_during": (
+            "✅ Aucune des mortalités enregistrées ne coïncide avec les périodes de "
+            "dysfonctionnement déclarées."
+        ),
+        "suivi_sheet_malfunction": "Pannes",
         # ── Analyse mortalités (tab Suivi) ──────────────────────────────────────
         "suivi_analysis_title": "Analyse : Mortalités vs Activité résiduelle",
         "suivi_analysis_intro": (
@@ -980,6 +1007,30 @@ LANGUAGES = {
         "suivi_mortality_add":      "➕ Add",
         "suivi_mortality_recorded": "Recorded mortalities",
         "suivi_sheet_mortality":    "Mortalities",
+        # ── Curtailment malfunction (Monitoring tab) ─────────────────────────────
+        "suivi_malfunction_title":        "Curtailment malfunctions",
+        "suivi_malfunction_intro": (
+            "Record any periods during which the curtailment system was known to malfunction "
+            "(technical failure, incorrect settings). "
+            "These periods appear in orange on the histogram and are factored into the mortality analysis."
+        ),
+        "suivi_malfunction_label":        "Reason / description (optional)",
+        "suivi_malfunction_placeholder":  "E.g. anemometer failure, settings error…",
+        "suivi_malfunction_default_label": "Technical failure",
+        "suivi_malfunction_recorded":     "Recorded malfunction periods",
+        "suivi_malfunction_col":          "Technical failure",
+        "suivi_malfunction_analysis": (
+            "⚠️ **{n} mortality/ies out of {total} occurred during a declared curtailment malfunction "
+            "period ({labels}).** "
+            "This is a major potential explanation: the curtailment system not being operational, "
+            "the turbines may have rotated under conditions that should have been protected, "
+            "exposing bats to uncontrolled collision risk. "
+            "Turbine operational data for this period should be checked and the competent authority notified."
+        ),
+        "suivi_malfunction_none_during": (
+            "✅ None of the recorded mortalities coincide with the declared malfunction periods."
+        ),
+        "suivi_sheet_malfunction": "Malfunctions",
         # ── Mortality analysis (Monitoring tab) ─────────────────────────────────
         "suivi_analysis_title": "Analysis: Mortalities vs Residual Activity",
         "suivi_analysis_intro": (
