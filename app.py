@@ -1965,6 +1965,10 @@ with tab8:
         summ_res[t["col_night_display"]] = summ_res[t["col_night_display"]].astype(str)
 
         # Filtre espèce
+        # Versions toutes espèces conservées pour l'analyse (avant filtre)
+        summ_all_full = summ_all.copy()
+        summ_res_full = summ_res.copy()
+
         if sp_sel != t["suivi_all_species"]:
             summ_all = summ_all[summ_all[t["col_species_display"]] == sp_sel]
             summ_res = summ_res[summ_res[t["col_species_display"]] == sp_sel]
@@ -2134,15 +2138,16 @@ with tab8:
                 st.markdown(t["suivi_analysis_intro"])
 
                 # ── Croisement mortalités × activité résiduelle ───────────────
-                # Nuits avec activité résiduelle (individus estimés > 0)
+                # Utiliser les données TOUTES ESPÈCES pour la classification des nuits
+                # (indépendamment du filtre espèce du graphique)
                 nights_with_residual = set(
-                    summ_res[
-                        summ_res[t["col_ind_display"]] > 0
+                    summ_res_full[
+                        summ_res_full[t["col_ind_display"]] > 0
                     ][t["col_night_display"]].astype(str).unique()
                 )
-                # Toutes les nuits du suivi (même sans contact résiduel)
+                # Toutes les nuits du suivi = toutes les nuits acoustiques du fichier
                 all_nights_in_data = set(
-                    agg[t["col_night_display"]].astype(str).unique()
+                    summ_all_full[t["col_night_display"]].astype(str).unique()
                 )
 
                 n_mort = len(st.session_state["mortality_list"])
@@ -2158,8 +2163,8 @@ with tab8:
                     elif m_night in nights_with_residual:
                         n_with += 1
                         ind_res = int(
-                            summ_res[
-                                summ_res[t["col_night_display"]].astype(str) == m_night
+                            summ_res_full[
+                                summ_res_full[t["col_night_display"]].astype(str) == m_night
                             ][t["col_ind_display"]].sum()
                         )
                         status = t["suivi_analysis_with_activity"]
