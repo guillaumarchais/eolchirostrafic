@@ -2126,6 +2126,105 @@ with tab8:
         )
         st.caption(t["suivi_export_caption"])
 
+        # ── Analyse : Mortalités vs Activité résiduelle ───────────────────────
+        if st.session_state.get("mortality_list"):
+            st.markdown("---")
+            with st.container(border=True):
+                st.subheader(t["suivi_analysis_title"])
+                st.markdown(t["suivi_analysis_intro"])
+
+                # ── Croisement mortalités × activité résiduelle ───────────────
+                # Nuits avec activité résiduelle (individus estimés > 0)
+                nights_with_residual = set(
+                    summ_res[
+                        summ_res[t["col_ind_display"]] > 0
+                    ][t["col_night_display"]].astype(str).unique()
+                )
+                # Toutes les nuits du suivi (même sans contact résiduel)
+                all_nights_in_data = set(
+                    agg[t["col_night_display"]].astype(str).unique()
+                )
+
+                n_mort = len(st.session_state["mortality_list"])
+                n_with, n_without, n_out_of_range = 0, 0, 0
+                detail_rows = []
+
+                for m in st.session_state["mortality_list"]:
+                    m_night = str(m["date"])
+                    if m_night not in all_nights_in_data:
+                        n_out_of_range += 1
+                        ind_res = "—"
+                        status  = t["suivi_analysis_out_of_range"]
+                    elif m_night in nights_with_residual:
+                        n_with += 1
+                        ind_res = int(
+                            summ_res[
+                                summ_res[t["col_night_display"]].astype(str) == m_night
+                            ][t["col_ind_display"]].sum()
+                        )
+                        status = t["suivi_analysis_with_activity"]
+                    else:
+                        n_without += 1
+                        ind_res = 0
+                        status  = t["suivi_analysis_no_activity"]
+
+                    detail_rows.append({
+                        t["col_species_display"]:   m["espece"],
+                        t["period_start"]:          m["date"].strftime("%d/%m/%Y"),
+                        t["suivi_analysis_status"]: status,
+                        t["suivi_analysis_ind_res"]: ind_res,
+                    })
+
+                n_classifiable = n_with + n_without
+                pct_with    = round(n_with    / n_classifiable * 100, 1) if n_classifiable else 0
+                pct_without = round(n_without / n_classifiable * 100, 1) if n_classifiable else 0
+
+                # ── Métriques ─────────────────────────────────────────────────
+                ma1, ma2, ma3 = st.columns(3)
+                ma1.metric(t["suivi_analysis_n_with"],
+                           f"{n_with} / {n_mort}",
+                           delta=f"{pct_with} %",
+                           delta_color="inverse")
+                ma2.metric(t["suivi_analysis_n_without"],
+                           f"{n_without} / {n_mort}",
+                           delta=f"{pct_without} %",
+                           delta_color="off")
+                if n_out_of_range:
+                    ma3.metric(t["suivi_analysis_out_of_range"],
+                               str(n_out_of_range), delta_color="off")
+
+                # ── Tableau de détail ──────────────────────────────────────────
+                st.dataframe(
+                    pd.DataFrame(detail_rows),
+                    hide_index=True,
+                    use_container_width=True
+                )
+
+                # ── Interprétation dynamique ───────────────────────────────────
+                st.markdown(f"#### {t['suivi_analysis_interpretation_title']}")
+
+                if n_classifiable == 0:
+                    st.info(t["suivi_analysis_no_data"])
+                elif pct_with >= 70:
+                    st.error(t["suivi_analysis_high_residual"].format(
+                        pct=pct_with, n=n_with, total=n_mort
+                    ))
+                elif pct_with >= 40:
+                    st.warning(t["suivi_analysis_mixed"].format(
+                        pct_with=pct_with, pct_without=pct_without,
+                        n_with=n_with, n_without=n_without
+                    ))
+                else:
+                    st.info(t["suivi_analysis_low_residual"].format(
+                        pct=pct_without, n=n_without, total=n_mort
+                    ))
+
+                if n_out_of_range:
+                    st.caption(t["suivi_analysis_out_of_range_note"].format(
+                        n=n_out_of_range
+                    ))
+
+
 # ── Crédit auteur ─────────────────────────────────────────────────────────────
 st.markdown(
     "<div style='text-align: right; color: var(--text-color, #888); "
