@@ -630,7 +630,7 @@ LANGUAGES = {
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Bat Individual Separator — Acoustic Monitoring",
-        "app_title": "🦇 Bat Individual Separator — Acoustic Monitoring",
+        "app_title": "🦇 EOLCHIROTRAFIC : bat pass convertor into indicator of individuals and smart bat curtailment (design and check)",
         "app_description": (
             "This application estimates the **number of distinct bat individuals** from automatic acoustic "
             "recording data, using the **separator method** (Seebens-Hoyer et al., 2026): two passes separated "
