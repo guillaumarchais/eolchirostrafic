@@ -5,7 +5,7 @@ LANGUAGES = {
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Séparateur d'individus — Chiroptères",
-        "app_title": "🦇 EOLCHIROTRAFIC : convertisseur des contacts de chauves-souris en individus et optimisation du bridage des éoliennes",
+        "app_title": "🦇 Séparateur d'individus — Acoustique chiroptères",
         "app_description": (
             "Cette application estime le **nombre d'individus distincts** de chauves-souris à partir "
             "de données d'enregistrement acoustique automatique, en appliquant la **méthode du séparateur** "
@@ -14,7 +14,7 @@ LANGUAGES = {
             "(Bimodality Coefficient + Dip test de Hartigan) pour valider l'applicabilité de la méthode par espèce, "
             "propose une **vue phénologique**, un **rapport rédactionnel** prêt à intégrer dans une étude d'impact, "
             "et un module **bridage adaptatif** pour optimiser les seuils vent/température/horaires en fonction "
-            "de l'activité résiduelle des chauves-souris (élaboration et suivi d'efficacité)."
+            "de l'activité résiduelle des chauves-souris."
         ),
         "author_credit": "Application conçue par Guillaume Marchais",
 
@@ -524,6 +524,19 @@ LANGUAGES = {
         "optim_grp_temp": "🌡️ Température",
         "optim_col_group": "Paramètre varié",
         "optim_col_ok": "Objectif",
+        # ── Sélection scénario + scatter (onglet Bridage) ──────────────────────
+        "optim_select_title":      "Visualiser un scénario",
+        "optim_select_label":      "Sélectionner un scénario d'optimisation :",
+        "optim_scatter_title":     "Contacts bridés vs résiduels — Période {n} (Vent × Température)",
+        "optim_scatter_protected": "🟢 Contacts protégés (bridage actif)",
+        "optim_scatter_residual":  "🔴 Contacts résiduels (hors bridage)",
+        "optim_scatter_xaxis":     "Température (°C)",
+        "optim_scatter_yaxis":     "Vitesse du vent (m/s)",
+        "optim_scatter_caption": (
+            "Scénario : vent ≤ {wind} m/s | temp ≥ {temp} °C | plage {hrange}. "
+            "{n_prot} contacts protégés (🟢), {n_res} résiduels (🔴) — "
+            "activité résiduelle : {pct_res} %."
+        ),
         "optim_col_window": "Plage horaire",
         "optim_col_curtailed_pct": "Taux de bridage",
         "optim_progress": "Calcul des scénarios en cours…",
@@ -630,7 +643,7 @@ LANGUAGES = {
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Bat Individual Separator — Acoustic Monitoring",
-        "app_title": "🦇 EOLCHIROTRAFIC : bat pass convertor into indicator of individuals and smart bat curtailment (design and check)",
+        "app_title": "🦇 Bat Individual Separator — Acoustic Monitoring",
         "app_description": (
             "This application estimates the **number of distinct bat individuals** from automatic acoustic "
             "recording data, using the **separator method** (Seebens-Hoyer et al., 2026): two passes separated "
@@ -1140,6 +1153,19 @@ LANGUAGES = {
         "optim_grp_temp": "🌡️ Temperature",
         "optim_col_group": "Varied parameter",
         "optim_col_ok": "Target",
+        # ── Scenario selection + scatter (Curtailment tab) ─────────────────────
+        "optim_select_title":      "Visualise a scenario",
+        "optim_select_label":      "Select an optimisation scenario:",
+        "optim_scatter_title":     "Curtailed vs residual contacts — Period {n} (Wind × Temperature)",
+        "optim_scatter_protected": "🟢 Protected contacts (curtailment active)",
+        "optim_scatter_residual":  "🔴 Residual contacts (outside curtailment)",
+        "optim_scatter_xaxis":     "Temperature (°C)",
+        "optim_scatter_yaxis":     "Wind speed (m/s)",
+        "optim_scatter_caption": (
+            "Scenario: wind ≤ {wind} m/s | temp ≥ {temp} °C | window {hrange}. "
+            "{n_prot} protected contacts (🟢), {n_res} residual (🔴) — "
+            "residual activity: {pct_res}%."
+        ),
         "optim_col_window": "Time window",
         "optim_col_curtailed_pct": "Curtailment rate",
         "optim_progress": "Computing scenarios…",
