@@ -2098,6 +2098,7 @@ with tab8:
                     "espece": mort_sp,
                     "date":   mort_date,
                 })
+                st.rerun()  # le graphique (en haut) relit session_state à jour
 
         # Liste des mortalités saisies + bouton de suppression
         if st.session_state["mortality_list"]:
@@ -2148,6 +2149,7 @@ with tab8:
                     "end":   mf_end,
                     "label": mf_label or t["suivi_malfunction_default_label"],
                 })
+                st.rerun()  # le graphique (en haut) relit session_state à jour
 
         if st.session_state["malfunction_periods"]:
             st.markdown(f"**{t['suivi_malfunction_recorded']}**")
