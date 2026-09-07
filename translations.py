@@ -5,7 +5,7 @@ LANGUAGES = {
 
         # ── Page / App ────────────────────────────────────────────────────────
         "page_title": "Séparateur d'individus — Chiroptères",
-        "app_title": "🦇 EOLCHIROTRAFIC : convertisseur des contacts de chauves-souris en individus et bridage des éoliennes",
+        "app_title": "🦇 EOLCHIROTRAFIC : convertisseur des contacts de chauves-souris en individus et optimisation du bridage des éoliennes",
         "app_description": (
             "Cette application estime le **nombre d'individus distincts** de chauves-souris à partir "
             "de données d'enregistrement acoustique automatique, en appliquant la **méthode du séparateur** "
