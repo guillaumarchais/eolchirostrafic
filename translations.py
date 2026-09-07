@@ -14,7 +14,7 @@ LANGUAGES = {
             "(Bimodality Coefficient + Dip test de Hartigan) pour valider l'applicabilité de la méthode par espèce, "
             "propose une **vue phénologique**, un **rapport rédactionnel** prêt à intégrer dans une étude d'impact, "
             "et un module **bridage adaptatif** pour optimiser les seuils vent/température/horaires en fonction "
-            "de l'activité résiduelle des chauves-souris."
+            "de l'activité résiduelle des chauves-souris (élaboration et suivi d'efficacité)."
         ),
         "author_credit": "Application conçue par Guillaume Marchais",
 
