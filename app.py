@@ -2010,6 +2010,61 @@ with tab8:
             xaxis=dict(tickangle=-45),
             height=400,
         )
+        # ── Pannes + mortalités sur le graphique (session_state dispo) ─────────
+        if st.session_state.get("malfunction_periods"):
+            for mf in st.session_state["malfunction_periods"]:
+                mf_s = mf["start"].strftime("%Y-%m-%d")
+                mf_e = mf["end"].strftime("%Y-%m-%d")
+                fig_suivi.add_vrect(
+                    x0=mf_s, x1=mf_e,
+                    fillcolor="orange", opacity=0.15,
+                    layer="below", line_width=0,
+                    annotation_text=f"⚠️ {mf['label']}",
+                    annotation_position="top left",
+                    annotation_font_size=10,
+                    annotation_font_color="darkorange",
+                )
+
+        if st.session_state.get("mortality_list"):
+            x_vals = list(agg[t["col_night_display"]].values)
+            y_max  = float(agg[[t["suivi_label_without"], t["suivi_label_with"]]].max().max())
+            y_mort = y_max * 1.08
+            y_top  = y_max * 1.20
+
+            for m in st.session_state["mortality_list"]:
+                m_night = m["date"].strftime("%Y-%m-%d")
+                if m_night in x_vals:
+                    x_idx = m_night
+                else:
+                    x_idx = min(x_vals, key=lambda v: abs(
+                        pd.Timestamp(v) - pd.Timestamp(m["date"])
+                    ), default=None)
+                if x_idx is None:
+                    continue
+                fig_suivi.add_shape(
+                    type="line",
+                    x0=x_idx, x1=x_idx,
+                    y0=0, y1=y_top,
+                    line=dict(color="red", width=2, dash="dot"),
+                )
+                sp_short = m["espece"].split()[0]
+                fig_suivi.add_annotation(
+                    x=x_idx, y=y_mort,
+                    text=f"☠️ {sp_short}",
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowcolor="red",
+                    font=dict(color="red", size=11, family="Arial Black"),
+                    bgcolor="rgba(255,200,200,0.85)",
+                    bordercolor="red",
+                    borderwidth=1,
+                    yanchor="bottom",
+                )
+            fig_suivi.update_layout(yaxis_range=[0, y_top * 1.05])
+
+        st.plotly_chart(fig_suivi, use_container_width=True)
+
+        # ── Mortalités observées ───────────────────────────────────────────────
         # ── Saisie des mortalités ─────────────────────────────────────────────
         st.markdown("---")
         st.subheader(t["suivi_mortality_title"])
@@ -2109,65 +2164,6 @@ with tab8:
                     st.session_state["malfunction_periods"].pop(idx)
                 st.rerun()
 
-            # Afficher les périodes de panne sur le graphique (zone grisée)
-            for mf in st.session_state["malfunction_periods"]:
-                mf_s = mf["start"].strftime("%Y-%m-%d")
-                mf_e = mf["end"].strftime("%Y-%m-%d")
-                fig_suivi.add_vrect(
-                    x0=mf_s, x1=mf_e,
-                    fillcolor="orange", opacity=0.15,
-                    layer="below", line_width=0,
-                    annotation_text=f"⚠️ {mf['label']}",
-                    annotation_position="top left",
-                    annotation_font_size=10,
-                    annotation_font_color="darkorange",
-                )
-
-        # ── Ajout des mortalités sur le graphique ─────────────────────────────
-        if st.session_state["mortality_list"]:
-            x_vals = list(agg[t["col_night_display"]].values)
-            y_max  = float(agg[[t["suivi_label_without"], t["suivi_label_with"]]].max().max())
-            y_mort = y_max * 1.08          # légèrement au-dessus des barres
-            y_top  = y_max * 1.20          # hauteur de la ligne verticale
-
-            for m in st.session_state["mortality_list"]:
-                m_night = m["date"].strftime("%Y-%m-%d")  # format normalisé YYYY-MM-DD
-                if m_night in x_vals:
-                    x_idx = m_night        # position sur l'axe catégoriel
-                else:
-                    # chercher la nuit acoustique la plus proche
-                    x_idx = min(x_vals, key=lambda v: abs(
-                        pd.Timestamp(v) - pd.Timestamp(m["date"])
-                    ), default=None)
-                if x_idx is None:
-                    continue
-
-                # Ligne verticale rouge
-                fig_suivi.add_shape(
-                    type="line",
-                    x0=x_idx, x1=x_idx,
-                    y0=0, y1=y_top,
-                    line=dict(color="red", width=2, dash="dot"),
-                )
-                # Marqueur ☠️ + nom espèce
-                sp_short = m["espece"].split()[0]   # premier mot (ex: "Pipistrelle")
-                fig_suivi.add_annotation(
-                    x=x_idx, y=y_mort,
-                    text=f"☠️ {sp_short}",
-                    showarrow=True,
-                    arrowhead=2,
-                    arrowcolor="red",
-                    font=dict(color="red", size=11, family="Arial Black"),
-                    bgcolor="rgba(255,200,200,0.85)",
-                    bordercolor="red",
-                    borderwidth=1,
-                    yanchor="bottom",
-                )
-
-            # Mettre à jour la hauteur pour accueillir les annotations
-            fig_suivi.update_layout(yaxis_range=[0, y_top * 1.05])
-
-        st.plotly_chart(fig_suivi, use_container_width=True)
 
         # ── Export du graphique ────────────────────────────────────────────────
         st.markdown("---")
