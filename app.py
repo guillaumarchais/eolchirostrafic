@@ -1638,59 +1638,52 @@ with tab7:
             )
             run_optim = oc2.button(t["optim_run"], use_container_width=True)
 
+            # ── CALCUL : uniquement au clic, stockage en session_state ─────────
+            WIND_GRID = [5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0]
+            TEMP_GRID = [7.0, 8.0, 10.0, 12.0, 14.0, 16.0]
+            TS_GRID   = [19, 20, 21, 22]
+            TE_GRID   = [6, 7, 8]
+
+            def _count_residual_ind(df_residual, sep_min_val):
+                if len(df_residual) == 0:
+                    return 0
+                total = 0
+                for (_, _), grp in df_residual.groupby(
+                        ["espece", "nuit_acoustique"], sort=False):
+                    times = grp["datetime"].sort_values().values
+                    n_ind = 1
+                    for k in range(1, len(times)):
+                        gap = (times[k] - times[k - 1]) / np.timedelta64(1, "m")
+                        if gap > sep_min_val:
+                            n_ind += 1
+                    total += n_ind
+                return total
+
             if run_optim:
-                # ── Grille de paramètres (vent ≤ 9 m/s) ─────────────────────
-                WIND_GRID = [5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0]
-                TEMP_GRID = [7.0, 8.0, 10.0, 12.0, 14.0, 16.0]
-                TS_GRID   = [19, 20, 21, 22]
-                TE_GRID   = [6, 7, 8]
-
-                # ── Comptage rapide des individus résiduels ───────────────────
-                def _count_residual_ind(df_residual, sep_min_val):
-                    """Applique la méthode du séparateur aux contacts résiduels."""
-                    if len(df_residual) == 0:
-                        return 0
-                    total = 0
-                    for (_, _), grp in df_residual.groupby(
-                            ["espece", "nuit_acoustique"], sort=False):
-                        times = grp["datetime"].sort_values().values
-                        n_ind = 1
-                        for k in range(1, len(times)):
-                            gap = (times[k] - times[k - 1]) / np.timedelta64(1, "m")
-                            if gap > sep_min_val:
-                                n_ind += 1
-                        total += n_ind
-                    return total
-
+                _optim_data = []
                 for pi, p in enumerate(periods):
-                    st.markdown(f"#### {t['optim_period_title'].format(n=pi+1, start=pd.Timestamp(p['start']).strftime('%d/%m/%Y'), end=pd.Timestamp(p['end']).strftime('%d/%m/%Y'))}")
-
-                    _nuit_ts = pd.to_datetime(df_work["nuit_acoustique"])
                     _ps = pd.Timestamp(p["start"])
                     _pe = pd.Timestamp(p["end"])
+                    _nuit_ts = pd.to_datetime(df_work["nuit_acoustique"])
                     df_p = df_work[
-                        (_nuit_ts >= _ps) &
-                        (_nuit_ts <= _pe) &
-                        df_work["vent_ms"].notna() &
-                        df_work["temp_c"].notna()
+                        (_nuit_ts >= _ps) & (_nuit_ts <= _pe) &
+                        df_work["vent_ms"].notna() & df_work["temp_c"].notna()
                     ].copy()
                     n_total = len(df_p)
                     if n_total == 0:
-                        st.info(t["optim_no_contacts"])
+                        _optim_data.append({"pi": pi, "p": p, "empty": True,
+                                            "target_pct": target_pct})
                         continue
-
-                    # Pré-trier pour accélérer le groupby interne
                     df_p = df_p.sort_values(["espece", "nuit_acoustique", "datetime"])
                     hour      = df_p["datetime"].dt.hour.values
                     w_vals    = df_p["vent_ms"].values
                     temp_vals = df_p["temp_c"].values
-                    n_total_ind = _count_residual_ind(df_p, sep_min)  # baseline
+                    n_total_ind = _count_residual_ind(df_p, sep_min)
 
-                    results = []
+                    results_pi = []
                     prog = st.progress(0, text=t["optim_progress"])
-                    n_combos = len(WIND_GRID) * len(TEMP_GRID) * len(TS_GRID) * len(TE_GRID)
+                    n_combos = len(WIND_GRID)*len(TEMP_GRID)*len(TS_GRID)*len(TE_GRID)
                     combo_i  = 0
-
                     for w in WIND_GRID:
                         m_wind = w_vals < w
                         for tmp in TEMP_GRID:
@@ -1703,232 +1696,200 @@ with tab7:
                                         m_time = (hour >= ts) | (hour < te)
                                     m_curtailed = m_wind & m_temp & m_time
                                     df_res = df_p[~m_curtailed]
-                                    n_res      = len(df_res)
-                                    pct_res    = round(n_res / n_total * 100, 1)
-                                    n_ind_res  = _count_residual_ind(df_res, sep_min)
-                                    pct_ind    = round(n_ind_res / max(n_total_ind, 1) * 100, 1)
-                                    n_curtailed = n_total - n_res
+                                    n_res       = len(df_res)
+                                    pct_res     = round(n_res / n_total * 100, 1)
+                                    n_ind_res   = _count_residual_ind(df_res, sep_min)
+                                    pct_ind     = round(n_ind_res / max(n_total_ind, 1) * 100, 1)
                                     win_w = (te - ts) % 24
-                                    effort = win_w - (tmp / 4)
-                                    results.append({
+                                    results_pi.append({
                                         "wind": w, "temp": tmp, "ts": ts, "te": te,
                                         "n_res": n_res, "pct_res": pct_res,
                                         "n_ind_res": n_ind_res, "pct_ind": pct_ind,
-                                        "n_curtailed": n_curtailed,
-                                        "pct_curtailed": round(n_curtailed / n_total * 100, 1),
-                                        "win_w": win_w, "effort": effort,
+                                        "n_curtailed": n_total - n_res,
+                                        "pct_curtailed": round((n_total-n_res)/n_total*100, 1),
+                                        "win_w": win_w, "effort": win_w - (tmp/4),
                                     })
                                     combo_i += 1
-                                    prog.progress(combo_i / n_combos,
-                                                  text=t["optim_progress"])
+                                    prog.progress(combo_i/n_combos, text=t["optim_progress"])
                     prog.empty()
 
-                    # ── Sélection : meilleur scénario par palier de vent ─────────
-                    # Pour chaque seuil de vent (9.0 → 5.0), on retient le meilleur
-                    # scénario (min individus résiduels → min % contacts → effort min
-                    # → temp max). Cela montre concrètement le gain/coût à chaque
-                    # réduction de 0,5 m/s.
+                    valid = [r for r in results_pi if r["pct_res"] <= target_pct]
+                    achieved = bool(valid)
 
-                    def _best_for_wind(pool, wind_val):
-                        """Meilleur résultat parmi ceux avec ce seuil de vent exact."""
-                        sub = [r for r in pool if r["wind"] == wind_val]
-                        if not sub:
-                            return None
-                        return sorted(sub, key=lambda r: (
-                            r["n_ind_res"],
-                            r["pct_res"],
-                            r["effort"],
-                            -r["temp"],
-                        ))[0]
-
-                    valid = [r for r in results if r["pct_res"] <= target_pct]
-
-                    if valid:
-                        st.success(t["optim_found"].format(n=len(valid), target=target_pct))
-                        pool = valid
-                        achieved = True
-                    else:
-                        st.warning(t["optim_not_found"].format(
-                            best=min(results, key=lambda r: r["pct_res"])["pct_res"],
-                            target=target_pct
-                        ))
-                        pool = results
-                        achieved = False
-
-                    # ── ⭐ : vent minimal + temp maximale + plage la plus courte ──
-                    # Parmi les scénarios atteignant l'objectif, on cherche la combinaison
-                    # la moins contraignante sur les 3 critères à la fois :
-                    #   1. vent le plus bas (turbines bridées moins souvent)
-                    #   2. température la plus haute (moins de nuits concernées)
-                    #   3. plage horaire la plus courte (moins d'heures concernées)
-                    if achieved:
-                        star_scenario = sorted(
-                            [r for r in results if r["pct_res"] <= target_pct],
-                            key=lambda r: (r["wind"], -r["temp"], r["win_w"])
-                        )[0]
-                    else:
-                        star_scenario = None  # aucun objectif atteint → pas d'étoile
-
+                    # Scénario optimal (vent min, temp max, fenêtre min)
+                    star_scenario = (
+                        sorted(valid, key=lambda r: (r["wind"], -r["temp"], r["win_w"]))[0]
+                        if valid else None
+                    )
                     def _is_star(r):
-                        """True si ce scénario correspond au scénario optimal."""
-                        return (star_scenario is not None
-                                and r["wind"] == star_scenario["wind"]
-                                and r["temp"] == star_scenario["temp"]
-                                and r["ts"]   == star_scenario["ts"]
-                                and r["te"]   == star_scenario["te"])
+                        return (star_scenario is not None and
+                                r["wind"]==star_scenario["wind"] and
+                                r["temp"]==star_scenario["temp"] and
+                                r["ts"]==star_scenario["ts"] and
+                                r["te"]==star_scenario["te"])
 
-                    # Vent de référence pour groupes 2 & 3 = vent du scénario optimal
                     ref_wind = star_scenario["wind"] if star_scenario else min(WIND_GRID)
 
-                    # ── GROUPE 1 : 5 paliers de vent (9 → 5), meilleur temp+heure ──
-                    wind_levels_g1 = sorted(WIND_GRID, reverse=True)[:5]
-                    group1 = []
-                    for wv in wind_levels_g1:
-                        best = _best_for_wind(results, wv)
-                        if best:
-                            group1.append(best)
+                    def _best_for_wind(pool, wv):
+                        sub = [r for r in pool if r["wind"] == wv]
+                        return sorted(sub, key=lambda r: (r["n_ind_res"], r["pct_res"],
+                                                          r["effort"], -r["temp"]))[0] if sub else None
 
-                    # ── GROUPE 2 : 3 plages horaires, vent=ref_wind, meilleure temp ──
-                    ref_results = [r for r in results if r["wind"] == ref_wind]
-                    ref_best_temp = sorted(ref_results,
-                                           key=lambda r: (r["n_ind_res"], r["pct_res"],
-                                                          r["effort"], -r["temp"]))[0]["temp"]
-                    ref_temp_results = [r for r in ref_results if r["temp"] == ref_best_temp]
+                    wind_levels_g1 = sorted(WIND_GRID, reverse=True)[:5]
+                    group1 = [b for wv in wind_levels_g1
+                               for b in [_best_for_wind(results_pi, wv)] if b]
+
+                    ref_results  = [r for r in results_pi if r["wind"] == ref_wind]
+                    best_temp_v  = sorted(ref_results,
+                                          key=lambda r: (r["n_ind_res"], r["pct_res"],
+                                                         r["effort"], -r["temp"]))[0]["temp"]
                     group2, seen_tw = [], set()
-                    for r in sorted(ref_temp_results,
+                    for r in sorted([r for r in ref_results if r["temp"]==best_temp_v],
                                     key=lambda r: (r["n_ind_res"], r["pct_res"], r["effort"])):
                         if (r["ts"], r["te"]) not in seen_tw:
-                            group2.append(r)
-                            seen_tw.add((r["ts"], r["te"]))
-                        if len(group2) == 3:
-                            break
+                            group2.append(r); seen_tw.add((r["ts"], r["te"]))
+                        if len(group2) == 3: break
 
-                    # ── GROUPE 3 : 2 températures, vent=ref_wind, meilleure plage ──
                     ref_ts = group2[0]["ts"] if group2 else TS_GRID[0]
                     ref_te = group2[0]["te"] if group2 else TE_GRID[0]
-                    ref_tw_results = [r for r in ref_results
-                                      if r["ts"] == ref_ts and r["te"] == ref_te
-                                      and r["temp"] != ref_best_temp]
-                    group3 = sorted(ref_tw_results,
-                                    key=lambda r: (r["n_ind_res"], r["pct_res"], -r["temp"]))[:2]
+                    group3 = sorted(
+                        [r for r in ref_results if r["ts"]==ref_ts and r["te"]==ref_te
+                         and r["temp"]!=best_temp_v],
+                        key=lambda r: (r["n_ind_res"], r["pct_res"], -r["temp"])
+                    )[:2]
 
-                    # ── Affichage des 3 groupes ────────────────────────────────────
                     def _make_row(r, group_label, star=False):
-                        cross  = r["ts"] > r["te"]
+                        cross = r["ts"] > r["te"]
                         hrange = f"{r['ts']:02d}h – {r['te']:02d}h" + (" (+1j)" if cross else "")
                         ok_mark = "✅" if r["pct_res"] <= target_pct else "❌"
                         return {
-                            t["optim_col_group"]:           group_label,
-                            t["optim_col_ok"]:              ok_mark,
-                            t["wind_threshold"]:            f"≤ {r['wind']:.1f} m/s",
-                            t["temp_threshold"]:            f"≥ {r['temp']:.0f} °C",
-                            t["optim_col_window"]:          ("⭐ " if star else "") + hrange,
-                            t["col_residual_ind"]:          f"{r['n_ind_res']} ({r['pct_ind']} %)",
-                            t["col_residual_contacts"]:     f"{r['n_res']} ({r['pct_res']} %)",
-                            t["optim_col_curtailed_pct"]:   f"{r['pct_curtailed']} %",
+                            t["optim_col_group"]: group_label,
+                            t["optim_col_ok"]:    ok_mark,
+                            t["wind_threshold"]:  f"≤ {r['wind']:.1f} m/s",
+                            t["temp_threshold"]:  f"≥ {r['temp']:.0f} °C",
+                            t["optim_col_window"]: ("⭐ " if star else "") + hrange,
+                            t["col_residual_ind"]: f"{r['n_ind_res']} ({r['pct_ind']} %)",
+                            t["col_residual_contacts"]: f"{r['n_res']} ({r['pct_res']} %)",
+                            t["optim_col_curtailed_pct"]: f"{r['pct_curtailed']} %",
                         }
 
                     rows = []
-                    for r in group1:
-                        rows.append(_make_row(r, t["optim_grp_wind"], star=_is_star(r)))
-                    for r in group2:
-                        rows.append(_make_row(r, t["optim_grp_time"], star=_is_star(r)))
-                    for r in group3:
-                        rows.append(_make_row(r, t["optim_grp_temp"], star=_is_star(r)))
+                    for r in group1: rows.append(_make_row(r, t["optim_grp_wind"], _is_star(r)))
+                    for r in group2: rows.append(_make_row(r, t["optim_grp_time"], _is_star(r)))
+                    for r in group3: rows.append(_make_row(r, t["optim_grp_temp"], _is_star(r)))
+
+                    if achieved:
+                        st.success(t["optim_found"].format(n=len(valid), target=target_pct))
+                    else:
+                        best_pct = min(results_pi, key=lambda r: r["pct_res"])["pct_res"]
+                        st.warning(t["optim_not_found"].format(best=best_pct, target=target_pct))
+
+                    _optim_data.append({
+                        "pi": pi, "p": p, "empty": False,
+                        "rows": rows,
+                        "all_top": group1 + group2 + group3,
+                        "target_pct": target_pct,
+                        "achieved": achieved,
+                        "p_label": f"#### {t['optim_period_title'].format(n=pi+1, start=pd.Timestamp(p['start']).strftime('%d/%m/%Y'), end=pd.Timestamp(p['end']).strftime('%d/%m/%Y'))}",
+                    })
+
+                st.session_state["optim_results"] = _optim_data
+
+            # ── AFFICHAGE : toujours, depuis session_state ────────────────────
+            if st.session_state.get("optim_results"):
+                for res in st.session_state["optim_results"]:
+                    st.markdown(res["p_label"])
+                    if res.get("empty"):
+                        st.info(t["optim_no_contacts"])
+                        continue
+
+                    p          = res["p"]
+                    rows       = res["rows"]
+                    all_top    = res["all_top"]
+                    target_pct = res["target_pct"]
 
                     st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
                     st.caption(t["optim_table_caption"])
 
-                    # ── Sélection d'un scénario pour visualisation ─────────────────
+                    # ── Sélection scénario + scatter ──────────────────────────
                     st.markdown(f"##### {t['optim_select_title']}")
-                    all_top = group1 + group2 + group3
                     scenario_labels = []
-                    for j, r in enumerate(all_top):
+                    for r in all_top:
                         cross = r["ts"] > r["te"]
-                        hr = f"{r['ts']:02d}h–{r['te']:02d}h" + ("(+1)" if cross else "")
-                        ok = "✅" if r["pct_res"] <= target_pct else "❌"
-                        star = "⭐ " if _is_star(r) else ""
+                        hr    = f"{r['ts']:02d}h–{r['te']:02d}h" + ("(+1)" if cross else "")
+                        ok    = "✅" if r["pct_res"] <= target_pct else "❌"
+                        # Repérer l'étoile depuis les données stockées
+                        in_star_row = any(
+                            row.get(t["optim_col_window"], "").startswith("⭐")
+                            and f"{r['wind']:.1f}" in row.get(t["wind_threshold"], "")
+                            and f"{r['temp']:.0f}" in row.get(t["temp_threshold"], "")
+                            for row in rows
+                        )
+                        star = "⭐ " if in_star_row else ""
                         scenario_labels.append(
                             f"{star}{ok} ≤{r['wind']:.1f}m/s | ≥{r['temp']:.0f}°C | {hr} | résiduel {r['pct_res']}%"
                         )
 
-                    sel_key = f"optim_scenario_sel_{pi}"
+                    sel_key = f"optim_scenario_sel_{res['pi']}"
                     if scenario_labels:
                         sel_label = st.radio(
-                            t["optim_select_label"],
-                            scenario_labels,
-                            index=0,
-                            key=sel_key,
-                            horizontal=False,
+                            t["optim_select_label"], scenario_labels,
+                            index=0, key=sel_key, horizontal=False,
                         )
-                        sel_idx   = scenario_labels.index(sel_label)
-                        sel       = all_top[sel_idx]
+                        sel_idx = scenario_labels.index(sel_label)
+                        sel     = all_top[sel_idx]
 
-                        # ── Graphique Vent × Température ─────────────────────────────
-                        st.markdown(f"##### {t['optim_scatter_title'].format(n=pi+1)}")
+                        # Recalcul df_scatter depuis df_work
+                        _nuit_ts2 = pd.to_datetime(df_work["nuit_acoustique"])
+                        df_scatter = df_work[
+                            (_nuit_ts2 >= pd.Timestamp(p["start"])) &
+                            (_nuit_ts2 <= pd.Timestamp(p["end"])) &
+                            df_work["vent_ms"].notna() & df_work["temp_c"].notna()
+                        ].copy()
 
-                        # Tous les contacts de la période (avec données vent+temp)
-                        df_scatter = df_p.copy()
-
-                        # Masque bridage du scénario sélectionné
-                        h_sc  = df_scatter["datetime"].dt.hour
-                        w_sc  = sel["wind"]
-                        t_sc  = sel["temp"]
-                        ts_sc = int(sel["ts"])
-                        te_sc = int(sel["te"])
-                        if ts_sc <= te_sc:
-                            m_time_sc = (h_sc >= ts_sc) & (h_sc < te_sc)
-                        else:
-                            m_time_sc = (h_sc >= ts_sc) | (h_sc < te_sc)
-
-                        m_prot = (
-                            df_scatter["vent_ms"].notna() &
-                            df_scatter["temp_c"].notna() &
-                            (df_scatter["vent_ms"] < w_sc) &
-                            (df_scatter["temp_c"]  > t_sc) &
-                            m_time_sc
-                        )
+                        h_sc   = df_scatter["datetime"].dt.hour
+                        w_sc   = sel["wind"];  t_sc = sel["temp"]
+                        ts_sc  = int(sel["ts"]); te_sc = int(sel["te"])
+                        m_time_sc = ((h_sc >= ts_sc) & (h_sc < te_sc)
+                                     if ts_sc <= te_sc else
+                                     (h_sc >= ts_sc) | (h_sc < te_sc))
+                        m_prot = (df_scatter["vent_ms"].notna() & df_scatter["temp_c"].notna() &
+                                  (df_scatter["vent_ms"] < w_sc) &
+                                  (df_scatter["temp_c"]  > t_sc) & m_time_sc)
                         df_prot = df_scatter[m_prot]
                         df_resd = df_scatter[~m_prot]
-
                         cross_sc = ts_sc > te_sc
                         hr_sc = f"{ts_sc:02d}h – {te_sc:02d}h" + (" (+1j)" if cross_sc else "")
 
+                        st.markdown(f"##### {t['optim_scatter_title'].format(n=res['pi']+1)}")
                         fig_sc = go.Figure()
                         fig_sc.add_trace(go.Scatter(
-                            x=df_prot["temp_c"], y=df_prot["vent_ms"],
-                            mode="markers",
+                            x=df_prot["temp_c"], y=df_prot["vent_ms"], mode="markers",
                             name=t["optim_scatter_protected"],
                             marker=dict(color="green", size=6, opacity=0.55,
                                         line=dict(width=0.3, color="darkgreen")),
                         ))
                         fig_sc.add_trace(go.Scatter(
-                            x=df_resd["temp_c"], y=df_resd["vent_ms"],
-                            mode="markers",
+                            x=df_resd["temp_c"], y=df_resd["vent_ms"], mode="markers",
                             name=t["optim_scatter_residual"],
                             marker=dict(color="red", size=6, opacity=0.55,
                                         line=dict(width=0.3, color="darkred")),
                         ))
-                        # Seuil température (vertical)
-                        fig_sc.add_vline(
-                            x=t_sc, line_dash="dash", line_color="#0055cc", line_width=1.5,
-                            annotation_text=f"≥ {t_sc} °C",
-                            annotation_position="top right",
-                            annotation_font_color="#0055cc",
-                        )
-                        # Seuil vent (horizontal)
-                        fig_sc.add_hline(
-                            y=w_sc, line_dash="dash", line_color="#cc5500", line_width=1.5,
-                            annotation_text=f"≤ {w_sc} m/s",
-                            annotation_position="top right",
-                            annotation_font_color="#cc5500",
-                        )
+                        fig_sc.add_vline(x=t_sc, line_dash="dash", line_color="#0055cc",
+                                         line_width=1.5,
+                                         annotation_text=f"≥ {t_sc} °C",
+                                         annotation_position="top right",
+                                         annotation_font_color="#0055cc")
+                        fig_sc.add_hline(y=w_sc, line_dash="dash", line_color="#cc5500",
+                                         line_width=1.5,
+                                         annotation_text=f"≤ {w_sc} m/s",
+                                         annotation_position="top right",
+                                         annotation_font_color="#cc5500")
                         fig_sc.update_layout(
                             xaxis_title=t["optim_scatter_xaxis"],
                             yaxis_title=t["optim_scatter_yaxis"],
                             legend=dict(orientation="h", yanchor="bottom", y=1.02),
-                            height=400,
-                            margin=dict(t=40, b=50),
+                            height=400, margin=dict(t=40, b=50),
                         )
                         st.plotly_chart(fig_sc, use_container_width=True)
                         st.caption(t["optim_scatter_caption"].format(
@@ -1936,10 +1897,6 @@ with tab7:
                             n_prot=len(df_prot), n_res=len(df_resd),
                             pct_res=round(len(df_resd)/max(len(df_scatter),1)*100,1),
                         ))
-
-
-
-
 
 with tab8:
     st.subheader(t["suivi_title"])
